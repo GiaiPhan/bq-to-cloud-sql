@@ -33,7 +33,7 @@ query_base = """
         ON trans.block_number = cont.block_number 
     LEFT JOIN `bigquery-public-data.crypto_ethereum.tokens` tok 
         ON trans.block_number = tok.block_number 
-    WHERE TIMESTAMP_TRUNC(trans.block_timestamp, DAY) >= TIMESTAMP({query_date})"
+    WHERE TIMESTAMP_TRUNC(trans.block_timestamp, DAY) >= TIMESTAMP('{query_date}')
 """
 
 
@@ -59,24 +59,25 @@ with DAG(
 
 ) as dag:
     @task()
-    def export_bq_table(bucket, prefix, table_folder, projectid, query_date):
+    def export_bq_table(bucket, prefix, table_folder, projectid, query_date, upstream_task):
             
         from google.cloud import bigquery
         client = bigquery.Client(project=projectid)
 
         table_folder = table_folder + "_from_" + str(query_date)
-        query_str = "EXPORT DATA OPTIONS( uri='gs://" + bucket + "/" + table_folder + "/" + prefix + "*.csv', format='CSV', overwrite=true,header=false) AS " + query_base.format(query_date)
+        query_str = "EXPORT DATA OPTIONS( uri='gs://" + bucket + "/" + table_folder + "/" + prefix + "*.csv', format='CSV', overwrite=true,header=false) AS " + query_base.format(query_date=query_date)
         
         # Perform a query.
         query_job = client.query(query_str)  # API request
         rows = query_job.result()  # Waits for query to finish
     
     @task()
-    def list_gcs_files(bucket, table_folder, prefix, upstream_task, delimiter="/"):
+    def list_gcs_files(bucket, table_folder, prefix, query_date, upstream_task, delimiter="/"):
         from google.cloud import storage
         """Lists all the blobs in the bucket."""
         storage_client = storage.Client()
 
+        table_folder = table_folder + "_from_" + str(query_date)
         # Note: Client.list_blobs requires at least package version 1.17.0.
         blobs = storage_client.list_blobs(bucket, prefix=table_folder + "/" + prefix, delimiter=delimiter)
         
@@ -120,7 +121,7 @@ with DAG(
         return {"status": "", "failed_files": failed_files}
 
     @task()
-    def delete_temporary_gcs_files(bucket, table_folder, query_date, upstream_task):
+    def delete_temporary_gcs_files(bucket, table_folder, query_date):
         from google.cloud import storage
 
         table_folder = table_folder + "_from_" + str(query_date)
@@ -132,17 +133,24 @@ with DAG(
         for blob in blobs:
             blob.delete()
             
-    
+    delete_files = delete_temporary_gcs_files(bucket="{{ params.bucket }}", \
+                               table_folder="{{ params.table_folder }}",
+                               query_date="{{ params.query_date }}"
+                            )
+
+
     export_bq = export_bq_table(bucket="{{ params.bucket }}", \
                         prefix="{{ params.prefix }}", \
                         table_folder="{{ params.table_folder }}", \
                         projectid="{{ params.projectid }}", \
-                        query_date="{{ params.query_date }}"
+                        query_date="{{ params.query_date }}",
+                        upstream_task=delete_files
                     )
 
     list_files = list_gcs_files(bucket="{{ params.bucket }}", \
                        table_folder="{{ params.table_folder }}", \
                        prefix="{{ params.prefix }}",
+                       query_date="{{ params.query_date }}",
                        upstream_task=export_bq
                        )
     
@@ -154,10 +162,5 @@ with DAG(
                                databaseschema="{{ params.databaseschema }}", \
                                importtable="{{ params.importtable }}",
                                gcs_files=list_files)
-    
-    delete_temporary_gcs_files(bucket="{{ params.bucket }}", \
-                               table_folder="{{ params.table_folder }}",
-                               query_date="{{ params.query_date }}",
-                               upstream_task=imp_operation)
 
 globals()[dag.dag_id] = dag
