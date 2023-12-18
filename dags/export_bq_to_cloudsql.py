@@ -71,7 +71,7 @@ with DAG(
         rows = query_job.result()  # Waits for query to finish
     
     @task()
-    def list_gcs_files(bucket, table_folder, prefix, delimiter="/"):
+    def list_gcs_files(bucket, table_folder, prefix, upstream_task, delimiter="/"):
         from google.cloud import storage
         """Lists all the blobs in the bucket."""
         storage_client = storage.Client()
@@ -119,19 +119,29 @@ with DAG(
         return {"status": "", "failed_files": failed_files}
 
     @task()
-    def delete_temporary_gcs_files(bucket, object_name):
-        pass
+    def delete_temporary_gcs_files(bucket, table_folder, upstream_task):
+        from google.cloud import storage
+
+        client = storage.Client()
+        bucket = client.get_bucket(bucket)
+        # list all objects in the directory
+        blobs = bucket.list_blobs(prefix=table_folder)
+        for blob in blobs:
+            blob.delete()
+            
     
-    # export_bq = export_bq_table(bucket="{{ params.bucket }}", \
-    #                    table_folder="{{ params.table_folder }}", \
-    #                    prefix="{{ params.prefix }}", \
-    #                    projectid="{{ params.projectid }}", \
-    #                    query="{{ params.query }}"
-    #                    )
+    export_bq = export_bq_table(bucket="{{ params.bucket }}", \
+                       table_folder="{{ params.table_folder }}", \
+                       prefix="{{ params.prefix }}", \
+                       projectid="{{ params.projectid }}", \
+                       query="{{ params.query }}"
+                       )
 
     list_files = list_gcs_files(bucket="{{ params.bucket }}", \
                        table_folder="{{ params.table_folder }}", \
-                       prefix="{{ params.prefix }}")
+                       prefix="{{ params.prefix }}",
+                       upstream_task=export_bq
+                       )
     
     imp_operation = import_gcs_to_cloudsql(bucket="{{ params.bucket }}", \
                                prefix="{{ params.prefix }}", \
@@ -141,5 +151,9 @@ with DAG(
                                databaseschema="{{ params.databaseschema }}", \
                                importtable="{{ params.importtable }}",
                                gcs_files=list_files)
+    
+    delete_temporary_gcs_files(bucket="{{ params.bucket }}", \
+                               table_folder="{{ params.table_folder }}",
+                               upstream_task=imp_operation)
 
 globals()[dag.dag_id] = dag
