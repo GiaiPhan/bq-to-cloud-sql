@@ -72,11 +72,9 @@ with DAG(
             
         from google.cloud import bigquery
         client = bigquery.Client(project=projectid)
-
-        table_folder = init_config.table_folder
         
         # Perform a query.
-        query_job = client.query(init_config.query_str)  # API request
+        query_job = client.query(kwargs["init_config"]["query_str"])  # API request
         rows = query_job.result()  # Waits for query to finish
     
     @task()
@@ -86,7 +84,7 @@ with DAG(
         storage_client = storage.Client()
 
         # Note: Client.list_blobs requires at least package version 1.17.0.
-        blobs = storage_client.list_blobs(bucket, prefix=init_config.table_folder + "/" + init_config.prefix, delimiter=delimiter)
+        blobs = storage_client.list_blobs(bucket, prefix=kwargs["init_config"]["table_folder"] + "/" + kwargs["init_config"]["prefix"], delimiter=delimiter)
         
         return [blob.name for blob in blobs]
 
@@ -131,7 +129,7 @@ with DAG(
     def delete_temporary_gcs_files(bucket, **kwargs):
         from google.cloud import storage
 
-        table_folder = init_config.table_folder
+        table_folder = kwargs["init_config"]["table_folder"]
 
         client = storage.Client()
         bucket = client.get_bucket(bucket)
@@ -141,27 +139,35 @@ with DAG(
             blob.delete()
     
     init_config = init_daily_config(
+        bucket="{{ params.bucket }}", \
         importtable="{{ params.importtable }}", \
         from_date="{{ params.from_date }}", \
         to_date="{{ params.to_date }}"
     )
 
-    delete_files = delete_temporary_gcs_files(bucket="{{ params.bucket }}", \
-                               init_config=init_config
-                            )
+    delete_files = delete_temporary_gcs_files(
+        bucket="{{ params.bucket }}", \
+        init_config=init_config
+    )
 
     export_bq = export_bq_table(
-                        projectid="{{ params.projectid }}"
-                    )
+        projectid="{{ params.projectid }}",
+        init_config=init_config
+    )
 
-    list_files = list_gcs_files(bucket="{{ params.bucket }}")
+    list_files = list_gcs_files(
+        bucket="{{ params.bucket }}",
+        init_config=init_config
+    )
     
-    imp_operation = import_gcs_to_cloudsql(bucket="{{ params.bucket }}", \
-                               projectid="{{ params.projectid }}", \
-                               instance="{{ params.instance }}", \
-                               databaseschema="{{ params.databaseschema }}", \
-                               importtable="{{ params.importtable }}",
-                               gcs_files=list_files)
+    imp_operation = import_gcs_to_cloudsql(
+        bucket="{{ params.bucket }}", \
+        projectid="{{ params.projectid }}", \
+        instance="{{ params.instance }}", \
+        databaseschema="{{ params.databaseschema }}", \
+        importtable="{{ params.importtable }}",
+        gcs_files=list_files
+    )
 
     # dag
     init_config >> delete_files >> export_bq >> list_files >> imp_operation
