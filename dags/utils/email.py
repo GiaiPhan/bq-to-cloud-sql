@@ -222,8 +222,8 @@ def _send_failure_callback_email_notification(context):
     run_id = context["dag_run"].run_id
     run_url = _build_airflow_url(dag_id, run_id)
     root_dag_id = context["params"].get("root_dag_id", "None")
-    email = ["chenglong.wu@dfiretailgroup.com", "zhengwei.ng@dfiretailgroup.com", "jeff.chen@dfiretailgroup.com"]
-    email_cc = ["chanyee.leong@dfiretailgroup.com"]
+    email = [""]
+    email_cc = [""]
     email_subject_prefix = "[Datalake]  ##DAG_ID## Monitoring -".replace("##DAG_ID##", dag_id)
     email_template = _get_email_template()
 
