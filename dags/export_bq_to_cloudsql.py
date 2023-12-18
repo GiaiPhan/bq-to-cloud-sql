@@ -1,7 +1,8 @@
-import os
+# import os
 import time
-import requests
+# import requests
 import datetime as dt
+# import pytz
 
 from airflow import DAG
 from airflow.decorators import dag, task
@@ -12,6 +13,31 @@ from utils.email import _send_successful_email_notification
 import googleapiclient.discovery
 
 
+query_base = """
+    SELECT 
+        trans.`hash` as txn_hash, 
+        trans.block_hash as block_hash, 
+        trans.transaction_type as transfer_type, 
+        trans.transaction_index as ref_index, 
+        trans.block_number as block_number, 
+        trans.from_address as from_address, 
+        trans.to_address as to_address, 
+        cont.address as contract_address, 
+        trans.value as quantity, 
+        trans.block_timestamp as txn_ts, 
+        tok.symbol as token_id, 
+        trans.block_hash as operator_address, 
+        EXTRACT(HOUR from trans.block_timestamp) as update_time, 
+    FROM `bigquery-public-data.crypto_ethereum.transactions`  trans 
+    INNER JOIN `bigquery-public-data.crypto_ethereum.contracts` cont 
+        ON trans.block_number = cont.block_number 
+    LEFT JOIN `bigquery-public-data.crypto_ethereum.tokens` tok 
+        ON trans.block_number = tok.block_number 
+    WHERE TIMESTAMP_TRUNC(trans.block_timestamp, DAY) >= TIMESTAMP({query_date})"
+"""
+
+
+
 
 with DAG(
     dag_id="export_bq_to_cloudsql",
@@ -19,22 +45,26 @@ with DAG(
     start_date=dt.datetime(2023, 12, 17),
     schedule_interval=None,
     params={
+        "timezone": "America/Mexico_City",
         "bucket":"int-data-ct-spotonchain-bq-cloudsql-temp",
         "projectid":"int-data-ct-spotonchain",
         "prefix":"ethereum_transfer_tab_",
         "table_folder":"ethereum_transfer_tab_17122023",
-        "query":"SELECT trans.`hash` as txn_hash, trans.block_hash as block_hash, trans.transaction_type as transfer_type, trans.transaction_index as ref_index, trans.block_number as block_number, trans.from_address as from_address, trans.to_address as to_address, cont.address as contract_address, trans.value as quantity, trans.block_timestamp as txn_ts, tok.symbol as token_id, trans.block_hash as operator_address, EXTRACT(HOUR from trans.block_timestamp) as update_time, FROM `bigquery-public-data.crypto_ethereum.transactions`  trans INNER JOIN `bigquery-public-data.crypto_ethereum.contracts` cont ON trans.block_number = cont.block_number LEFT JOIN `bigquery-public-data.crypto_ethereum.tokens` tok ON trans.block_number = tok.block_number WHERE TIMESTAMP_TRUNC(trans.block_timestamp, DAY) = TIMESTAMP('2023-12-14') LIMIT 1000",
+        "query_date": "2018-01-01",
         "instance":"spotonchain-test",
         "databaseschema":"spotonchain_db",
         "importtable":"ethereum_transfer_tab",
         "listResult": {"nextPageToken":""}
-    }
+    },
+
 ) as dag:
     @task()
-    def export_bq_table(bucket, prefix, query, table_folder, projectid):
+    def export_bq_table(bucket, prefix, query, table_folder, projectid, timezone, query_date):
+            
         from google.cloud import bigquery
         client = bigquery.Client()
-        query_str = "EXPORT DATA OPTIONS( uri='gs://" + bucket + "/" + table_folder + "/" + prefix + "*.csv', format='CSV', overwrite=true,header=false) AS " + query
+
+        query_str = "EXPORT DATA OPTIONS( uri='gs://" + bucket + "/" + table_folder + "/" + prefix + "*.csv', format='CSV', overwrite=true,header=false) AS " + query_base.format(query_date)
         
         # Perform a query.
         query_job = client.query(query_str)  # API request
