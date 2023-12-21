@@ -18,7 +18,7 @@ query_base = """
 with DAG(
     dag_id="period_crypto_ethereum_balances",
     tags=["trigger"],
-    start_date=dt.datetime(2023, 12, 17),
+    start_date=dt.datetime(2023, 12, 21),
     schedule_interval=None,
     params={
         "table_type": "one-time",

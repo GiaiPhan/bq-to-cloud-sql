@@ -26,7 +26,7 @@ default_args = {
 
 @dag(
     dag_id="trigger_init_ethereum_mainnet_us_transactions",
-    from_date=datetime(2023, 1, 1),
+    start_date=datetime(2023, 12, 21),
     max_active_runs=1,
     schedule=None,
     default_args=default_args,
@@ -35,7 +35,7 @@ default_args = {
         "projectid": "int-data-ct-spotonchain",
         "from_date": "2023-12-17",
         "to_date": "2023-12-18",
-        "paritition_field": "block_timestamp",
+        "partition_field": "block_timestamp",
         "databaseschema":"spotonchain",
         "mysqltable": "transactions",
         "table_filter_date": "block_timestamp",
@@ -47,8 +47,8 @@ def trigger_dagrun_dag():
     # import pandas module
     import pandas as pd
     
-    first_day = "{{ params.conf['from_date'] }}"
-    last_day = "{{ params.conf['to_date'] }}"
+    first_day = "{{ params.from_date }}"
+    last_day = "{{ params.to_date }}"
 
 
     date_range = pd.date_range(start=first_day, end=last_day)
@@ -62,10 +62,10 @@ def trigger_dagrun_dag():
             conf={
                 "from_date": first_day, 
                 "to_date": last_day,
-                "paritition_field":"{{ params.conf['paritition_field'] }}",
-                "databaseschema":"{{ params.conf['databaseschema'] }}",
-                "mysqltable":"{{ params.conf['mysqltable'] }}",
-                "table_filter_date":"{{ params.conf['table_filter_date'] }}"
+                "partition_field":"{{ params.partition_field }}",
+                "databaseschema":"{{ params.databaseschema }}",
+                "mysqltable":"{{ params.mysqltable }}",
+                "table_filter_date":"{{ params.table_filter_date }}"
             },
         )
 
@@ -86,7 +86,7 @@ def trigger_dagrun_dag():
                 conf={
                     "from_date": first_day, 
                     "to_date": _date,
-                    "paritition_field":"{{ params.conf['paritition_field'] }}",
+                    "partition_field":"{{ params.conf['partition_field'] }}",
                     "databaseschema":"{{ params.conf['databaseschema'] }}",
                     "mysqltable":"{{ params.conf['mysqltable'] }}",
                     "table_filter_date":"{{ params.conf['table_filter_date'] }}"

@@ -9,43 +9,15 @@ from airflow.models import Variable
 from dags.utils.email import _send_successful_email_notification
 from dags.utils.ca_utils import MySQL, BigQuery
 
-query_base = """
-    SELECT 
-    block_hash,
-    block_number,
-    block_timestamp,
-    transaction_hash,
-    transaction_index,
-    nonce,
-    from_address,
-    to_address,
-    value_lossless
-    gas,
-    gas_price,
-    input,
-    max_fee_per_gas,
-    max_priority_fee_per_gas,
-    transaction_type,
-    chain_id
-    FROM `bigquery-public-data.goog_blockchain_ethereum_mainnet_us.transactions`
-    WHERE TIMESTAMP_TRUNC({partition_field}, DAY) = TIMESTAMP('{partition_filter}')
-"""
-
-
-delete_query = """
-    DELETE FROM {table} 
-    WHERE {table_filter_date} = DATE(%s)
-"""
-
 with DAG(
     dag_id="period_ethereum_mainnet_us_transactions",
     tags=["trigger"],
-    start_date=dt.datetime(2023, 12, 17),
+    start_date=dt.datetime(2023, 12, 21),
     schedule_interval="*/30 * * * *",
     params={
         "projectid": "int-data-ct-spotonchain",
         "partition_filter": dt.datetime.now().strftime("%Y-%m-%d"),
-        "paritition_field": "block_timestamp",
+        "partition_field": "block_timestamp",
         "databaseschema":"spotonchain",
         "mysqltable": "transactions",
         "table_filter_date": "block_timestamp",
@@ -53,6 +25,33 @@ with DAG(
     },
 
 ) as dag:
+    query_base = """
+        SELECT 
+            block_hash,
+            block_number,
+            block_timestamp,
+            transaction_hash,
+            transaction_index,
+            nonce,
+            from_address,
+            to_address,
+            value_lossless
+            gas,
+            gas_price,
+            input,
+            max_fee_per_gas,
+            max_priority_fee_per_gas,
+            transaction_type,
+            chain_id
+        FROM `bigquery-public-data.goog_blockchain_ethereum_mainnet_us.transactions`
+        WHERE TIMESTAMP_TRUNC({partition_field}, DAY) = TIMESTAMP('{partition_filter}')
+    """
+
+
+    delete_query = """
+        DELETE FROM {mysqltable} 
+        WHERE {table_filter_date} = DATE(%s)
+    """
 
     @task()
     def init_configuration(partition_filter, partition_field, mysqltable, table_filter_date):
@@ -62,7 +61,7 @@ with DAG(
         )
 
         mysql_delete = delete_query.format(
-            table=mysqltable,
+            mysqltable=mysqltable,
             table_filter_date=table_filter_date
         )
 
@@ -115,7 +114,7 @@ with DAG(
                     )
     
     write_data = insert_data_to_sql(
-                    table="{{ params.mysqltable }}", \
+                    mysqltable="{{ params.mysqltable }}", \
                     dataframe=read_data
                 )
     

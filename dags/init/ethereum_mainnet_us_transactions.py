@@ -50,7 +50,7 @@ with DAG(
         "projectid": "int-data-ct-spotonchain",
         "from_date": "2023-12-17",
         "to_date": "2023-12-18",
-        "paritition_field": "block_timestamp",
+        "partition_field": "block_timestamp",
         "databaseschema":"spotonchain",
         "mysqltable": "transactions",
         "table_filter_date": "block_timestamp",
@@ -122,7 +122,7 @@ with DAG(
                     )
     
     write_data = insert_data_to_sql(
-                        table="{{ params.mysqltable }}", \
+                        mysqltable="{{ params.mysqltable }}", \
                         dataframe=read_data
                     )
     
