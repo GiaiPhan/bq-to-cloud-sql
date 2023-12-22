@@ -14,7 +14,8 @@ class MySQL:
                  password="userdemo@?C&_:cNvt}{P(%;1", database="spotonchain_demo"
     ):
         try:
-            self.db = create_engine('mysql://{user}:{password}@{host}/{database}'.format(
+            print(host, user, password, database)
+            self.db = create_engine('mysql://{user}:{password}@{host}:3306/{database}'.format(
                 host=host, user=user, 
                 password=password, database=database
             )).connect()
