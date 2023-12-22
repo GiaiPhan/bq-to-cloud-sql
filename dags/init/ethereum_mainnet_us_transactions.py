@@ -12,26 +12,133 @@ from dags.utils.email import _send_successful_email_notification
 from dags.utils.ca_utils import MySQL, BigQuery
 
 query_base = """
-SELECT 
-  block_hash,
-  block_number,
-  block_timestamp,
-  transaction_hash,
-  transaction_index,
-  nonce,
-  from_address,
-  to_address,
-  value_lossless
-  gas,
-  gas_price,
-  input,
-  max_fee_per_gas,
-  max_priority_fee_per_gas,
-  transaction_type,
-  chain_id
-FROM `bigquery-public-data.goog_blockchain_ethereum_mainnet_us.transactions`
-WHERE TIMESTAMP_TRUNC({partition_field}, DAY) >= TIMESTAMP('{from_date}')
+DECLARE NULL_ADDRESS STRING;
+
+SET NULL_ADDRESS="0x0000000000000000000000000000000000000000";
+
+WITH
+  transfers_token AS (
+  SELECT
+    transaction_hash AS txn_hash,
+    tt.block_hash,
+    CASE
+     WHEN ct.is_erc721 THEN 200   --ERC721 Token transfer
+     ELSE 10                      --ERC20 Token transfer
+    END AS transfer_type, 
+    log_index AS ref_index,
+    tt.block_number,
+    UNIX_SECONDS(tt.block_timestamp) AS txn_ts,
+    token_address AS contract_address,
+    from_address,
+    to_address,
+    CASE
+     WHEN ct.is_erc721 THEN value
+     ELSE "0"
+    END AS token_id,
+    CASE 
+     WHEN ct.is_erc721 THEN 1
+     ELSE SAFE_CAST(value as BIGNUMERIC)
+    END AS quantity,
+    NULL_ADDRESS AS operator_address,
+    GENERATE_UUID() AS id
+  FROM
+    `bigquery-public-data.crypto_ethereum.token_transfers` AS tt
+  LEFT JOIN 
+    `bigquery-public-data.crypto_ethereum.contracts` AS ct
+  ON 
+    tt.token_address=ct.address
+  WHERE TIMESTAMP_TRUNC(tt.{partition_field}, DAY) >= TIMESTAMP('{from_date}')
+    AND TIMESTAMP_TRUNC(tt.{partition_field}, DAY) <= TIMESTAMP('{to_date}')
+),
+  transfers_external AS (
+  SELECT
+    `hash` AS txn_hash,
+    block_hash,
+    1 AS transfer_type, --Native transfer
+    0 AS ref_index,
+    block_number,
+    UNIX_SECONDS(block_timestamp) AS txn_ts,
+    NULL_ADDRESS AS contract_address,
+    from_address,
+    to_address,
+    "0" AS token_id,
+    value AS quantity,
+    NULL_ADDRESS AS operator_address,
+    GENERATE_UUID() AS id
+  FROM
+    `bigquery-public-data.crypto_ethereum.transactions`
+  WHERE 
+    value > 0
+    AND TIMESTAMP_TRUNC({partition_field}, DAY) >= TIMESTAMP('{from_date}')
     AND TIMESTAMP_TRUNC({partition_field}, DAY) <= TIMESTAMP('{to_date}')
+),
+
+  transfers_internal AS (
+  SELECT
+    transaction_hash as txn_hash,
+    block_hash,
+    2 AS transfer_type,
+    0 as ref_index,
+    block_number,
+    UNIX_SECONDS(block_timestamp) as txn_ts,
+    NULL_ADDRESS as contract_address,
+    from_address,
+    to_address,
+    "0" as token_id,
+    value as quantity,
+    NULL_ADDRESS AS operator_address,
+    GENERATE_UUID() AS id
+  FROM
+    `bigquery-public-data.crypto_ethereum.traces` 
+  WHERE 
+    call_type != "delegatecall"
+    AND from_address IS NOT NULL
+    AND to_address IS NOT NULL
+    AND value > 0
+    AND TIMESTAMP_TRUNC({partition_field}, DAY) >= TIMESTAMP('{from_date}')
+    AND TIMESTAMP_TRUNC({partition_field}, DAY) <= TIMESTAMP('{to_date}')
+),
+
+  transfers_withdrawal as (SELECT
+    CAST(w.index AS STRING) as txn_hash,
+    `hash`,
+    3 AS transfer_type, -- Native withdrawal
+    w.index as ref_index,
+    number,
+    UNIX_SECONDS(timestamp) as txn_ts,
+    NULL_ADDRESS as contract_address,
+    NULL_ADDRESS as from_address,
+    w.address,
+    "0" as token_id,
+    CAST(w.amount AS BIGNUMERIC) as quantity,
+    NULL_ADDRESS AS operator_address,
+    GENERATE_UUID() AS id
+  FROM
+    `bigquery-public-data.crypto_ethereum.blocks` AS b
+    CROSS JOIN UNNEST(withdrawals) AS w
+  WHERE TIMESTAMP_TRUNC(timestamp, DAY) >= TIMESTAMP('{from_date}')
+    AND TIMESTAMP_TRUNC(timestamp, DAY) <= TIMESTAMP('{to_date}')
+  )
+
+SELECT
+  *
+FROM
+  transfers_token
+UNION ALL
+SELECT
+  *
+FROM
+  transfers_external
+UNION ALL
+SELECT
+  *
+FROM
+  transfers_internal
+UNION ALL
+SELECT
+  *
+FROM
+  transfers_withdrawal
 """
 
 
@@ -53,7 +160,7 @@ with DAG(
         "partition_field": "block_timestamp",
         "databaseschema":"spotonchain",
         "mysqltable": "transactions",
-        "table_filter_date": "block_timestamp",
+        "table_filter_date": "txn_ts",
         "listResult": {"nextPageToken":""}
     },
 
