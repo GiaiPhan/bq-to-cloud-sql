@@ -5,147 +5,147 @@ import datetime as dt
 # import pytz
 
 from airflow import DAG
-from airflow.decorators import dag, task
+from airflow.decorators import dag, task, task_group
 from airflow.models import Variable
 
-from dags.utils.email import _send_successful_email_notification
+# from dags.utils.email import _send_successful_email_notification
 from dags.utils.ca_utils import MySQL, BigQuery
 
+import pandas as pd
+
+
+
 query_base = """
-DECLARE NULL_ADDRESS STRING;
+`    WITH
+    transfers_token AS (
+    SELECT
+        transaction_hash AS txn_hash,
+        tt.block_hash,
+        CASE
+        WHEN ct.is_erc721 THEN 200   --ERC721 Token transfer
+        ELSE 10                      --ERC20 Token transfer
+        END AS transfer_type, 
+        log_index AS ref_index,
+        tt.block_number,
+        UNIX_SECONDS(tt.block_timestamp) AS txn_ts,
+        token_address AS contract_address,
+        from_address,
+        to_address,
+        CASE
+        WHEN ct.is_erc721 THEN value
+        ELSE "0"
+        END AS token_id,
+        CASE 
+        WHEN ct.is_erc721 THEN 1
+        ELSE SAFE_CAST(value as BIGNUMERIC)/POW(10, 6)
+        END AS quantity,
+        "0x0000000000000000000000000000000000000000" AS operator_address,
+        GENERATE_UUID() AS id
+    FROM
+        `bigquery-public-data.crypto_ethereum.token_transfers` AS tt
+    LEFT JOIN 
+        `bigquery-public-data.crypto_ethereum.contracts` AS ct
+    ON 
+        tt.token_address=ct.address
+    WHERE TIMESTAMP_TRUNC(tt.{partition_field}, DAY) >= TIMESTAMP('{from_date}')
+        AND TIMESTAMP_TRUNC(tt.{partition_field}, DAY) <= TIMESTAMP('{to_date}')
+    ),
+    transfers_external AS (
+    SELECT
+        `hash` AS txn_hash,
+        block_hash,
+        1 AS transfer_type, --Native transfer
+        0 AS ref_index,
+        block_number,
+        UNIX_SECONDS(block_timestamp) AS txn_ts,
+        "0x0000000000000000000000000000000000000000" AS contract_address,
+        from_address,
+        to_address,
+        "0" AS token_id,
+        CAST(value as BIGNUMERIC)/POW(10, 6) AS quantity,
+        "0x0000000000000000000000000000000000000000" AS operator_address,
+        GENERATE_UUID() AS id
+    FROM
+        `bigquery-public-data.crypto_ethereum.transactions`
+    WHERE 
+        value > 0
+        AND TIMESTAMP_TRUNC({partition_field}, DAY) >= TIMESTAMP('{from_date}')
+        AND TIMESTAMP_TRUNC({partition_field}, DAY) <= TIMESTAMP('{to_date}')
+    ),
 
-SET NULL_ADDRESS="0x0000000000000000000000000000000000000000";
+    transfers_internal AS (
+    SELECT
+        transaction_hash as txn_hash,
+        block_hash,
+        2 AS transfer_type,
+        0 as ref_index,
+        block_number,
+        UNIX_SECONDS(block_timestamp) as txn_ts,
+        "0x0000000000000000000000000000000000000000" as contract_address,
+        from_address,
+        to_address,
+        "0" as token_id,
+        CAST(value as BIGNUMERIC)/POW(10, 6) as quantity,
+        "0x0000000000000000000000000000000000000000" AS operator_address,
+        GENERATE_UUID() AS id
+    FROM
+        `bigquery-public-data.crypto_ethereum.traces` 
+    WHERE 
+        call_type != "delegatecall"
+        AND from_address IS NOT NULL
+        AND to_address IS NOT NULL
+        AND value > 0
+        AND TIMESTAMP_TRUNC({partition_field}, DAY) >= TIMESTAMP('{from_date}')
+        AND TIMESTAMP_TRUNC({partition_field}, DAY) <= TIMESTAMP('{to_date}')
+    ),
 
-WITH
-  transfers_token AS (
-  SELECT
-    transaction_hash AS txn_hash,
-    tt.block_hash,
-    CASE
-     WHEN ct.is_erc721 THEN 200   --ERC721 Token transfer
-     ELSE 10                      --ERC20 Token transfer
-    END AS transfer_type, 
-    log_index AS ref_index,
-    tt.block_number,
-    UNIX_SECONDS(tt.block_timestamp) AS txn_ts,
-    token_address AS contract_address,
-    from_address,
-    to_address,
-    CASE
-     WHEN ct.is_erc721 THEN value
-     ELSE "0"
-    END AS token_id,
-    CASE 
-     WHEN ct.is_erc721 THEN 1
-     ELSE SAFE_CAST(value as BIGNUMERIC)
-    END AS quantity,
-    NULL_ADDRESS AS operator_address,
-    GENERATE_UUID() AS id
-  FROM
-    `bigquery-public-data.crypto_ethereum.token_transfers` AS tt
-  LEFT JOIN 
-    `bigquery-public-data.crypto_ethereum.contracts` AS ct
-  ON 
-    tt.token_address=ct.address
-  WHERE TIMESTAMP_TRUNC(tt.{partition_field}, DAY) >= TIMESTAMP('{from_date}')
-    AND TIMESTAMP_TRUNC(tt.{partition_field}, DAY) <= TIMESTAMP('{to_date}')
-),
-  transfers_external AS (
-  SELECT
-    `hash` AS txn_hash,
-    block_hash,
-    1 AS transfer_type, --Native transfer
-    0 AS ref_index,
-    block_number,
-    UNIX_SECONDS(block_timestamp) AS txn_ts,
-    NULL_ADDRESS AS contract_address,
-    from_address,
-    to_address,
-    "0" AS token_id,
-    value AS quantity,
-    NULL_ADDRESS AS operator_address,
-    GENERATE_UUID() AS id
-  FROM
-    `bigquery-public-data.crypto_ethereum.transactions`
-  WHERE 
-    value > 0
-    AND TIMESTAMP_TRUNC({partition_field}, DAY) >= TIMESTAMP('{from_date}')
-    AND TIMESTAMP_TRUNC({partition_field}, DAY) <= TIMESTAMP('{to_date}')
-),
+    transfers_withdrawal as (SELECT
+        CAST(w.index AS STRING) as txn_hash,
+        `hash`,
+        3 AS transfer_type, -- Native withdrawal
+        w.index as ref_index,
+        number,
+        UNIX_SECONDS(timestamp) as txn_ts,
+        "0x0000000000000000000000000000000000000000" as contract_address,
+        "0x0000000000000000000000000000000000000000" as from_address,
+        w.address,
+        "0" as token_id,
+        CAST(w.amount AS BIGNUMERIC)/POW(10, 6) as quantity,
+        "0x0000000000000000000000000000000000000000" AS operator_address,
+        GENERATE_UUID() AS id
+    FROM
+        `bigquery-public-data.crypto_ethereum.blocks` AS b
+        CROSS JOIN UNNEST(withdrawals) AS w
+    WHERE TIMESTAMP_TRUNC(timestamp, DAY) >= TIMESTAMP('{from_date}')
+        AND TIMESTAMP_TRUNC(timestamp, DAY) <= TIMESTAMP('{to_date}')
+    )
 
-  transfers_internal AS (
-  SELECT
-    transaction_hash as txn_hash,
-    block_hash,
-    2 AS transfer_type,
-    0 as ref_index,
-    block_number,
-    UNIX_SECONDS(block_timestamp) as txn_ts,
-    NULL_ADDRESS as contract_address,
-    from_address,
-    to_address,
-    "0" as token_id,
-    value as quantity,
-    NULL_ADDRESS AS operator_address,
-    GENERATE_UUID() AS id
-  FROM
-    `bigquery-public-data.crypto_ethereum.traces` 
-  WHERE 
-    call_type != "delegatecall"
-    AND from_address IS NOT NULL
-    AND to_address IS NOT NULL
-    AND value > 0
-    AND TIMESTAMP_TRUNC({partition_field}, DAY) >= TIMESTAMP('{from_date}')
-    AND TIMESTAMP_TRUNC({partition_field}, DAY) <= TIMESTAMP('{to_date}')
-),
-
-  transfers_withdrawal as (SELECT
-    CAST(w.index AS STRING) as txn_hash,
-    `hash`,
-    3 AS transfer_type, -- Native withdrawal
-    w.index as ref_index,
-    number,
-    UNIX_SECONDS(timestamp) as txn_ts,
-    NULL_ADDRESS as contract_address,
-    NULL_ADDRESS as from_address,
-    w.address,
-    "0" as token_id,
-    CAST(w.amount AS BIGNUMERIC) as quantity,
-    NULL_ADDRESS AS operator_address,
-    GENERATE_UUID() AS id
-  FROM
-    `bigquery-public-data.crypto_ethereum.blocks` AS b
-    CROSS JOIN UNNEST(withdrawals) AS w
-  WHERE TIMESTAMP_TRUNC(timestamp, DAY) >= TIMESTAMP('{from_date}')
-    AND TIMESTAMP_TRUNC(timestamp, DAY) <= TIMESTAMP('{to_date}')
-  )
-
-SELECT
-  *
-FROM
-  transfers_token
-UNION ALL
-SELECT
-  *
-FROM
-  transfers_external
-UNION ALL
-SELECT
-  *
-FROM
-  transfers_internal
-UNION ALL
-SELECT
-  *
-FROM
-  transfers_withdrawal
+    SELECT
+    *
+    FROM
+    transfers_token
+    UNION ALL
+    SELECT
+    *
+    FROM
+    transfers_external
+    UNION ALL
+    SELECT
+    *
+    FROM
+    transfers_internal
+    UNION ALL
+    SELECT
+    *
+    FROM
+    transfers_withdrawal`
 """
 
 
 delete_query = """
     DELETE FROM {table} 
-    WHERE {table_filter_date} >= DATE(%s)
-        AND {table_filter_date} <= DATE(%s)
+    WHERE {table_filter_date} >= CAST(UNIX_TIMESTAMP(%s) AS UNSIGNED)
+        AND {table_filter_date} <= CAST(UNIX_TIMESTAMP(%s) AS UNSIGNED)
 """
 
 with DAG(
@@ -154,12 +154,14 @@ with DAG(
     start_date=dt.datetime(2023, 12, 17),
     schedule_interval=None,
     params={
-        "projectid": "int-data-ct-spotonchain",
-        "from_date": "2023-12-17",
-        "to_date": "2023-12-18",
+        "project_id": "int-data-ct-spotonchain",
+        "bq_location": "US",
+        "from_date": "2023-12-21",
+        "to_date": "2023-12-22",
         "partition_field": "block_timestamp",
-        "databaseschema":"spotonchain",
-        "mysqltable": "transactions",
+        "chunksize": 100000,
+        "databaseschema":"spotonchain_demo",
+        "mysqltable": "all_transfers",
         "table_filter_date": "txn_ts",
         "listResult": {"nextPageToken":""}
     },
@@ -189,25 +191,28 @@ with DAG(
         mysql_object.execute(mysql_delete, (from_date, to_date, ))
 
         
-   
-    @task()
-    def query_bq_table(projectid, **kwargs):
-        bq_object = BigQuery(project=projectid)
-        query_str = kwargs["init_config"]["bq_query"]
-
-        result = bq_object.query_to_dataframe(query_str)
-
-        return result
-
-
-
-    @task()
-    def insert_data_to_sql(mysqltable, dataframe, **kwargs):
+    def insert_into_mysql(dataframe, mysqltable):
         mysql_object = MySQL()
 
         mysql_object.write(dataframe, mysqltable)
 
-            
+
+    @task()
+    def insert_into_mysql_by_chunks(project_id, bq_location, mysqltable, chunksize, **kwargs):
+        bq_object = BigQuery(project=project_id)
+        query_str = kwargs["init_config"]["bq_query"]
+
+        bq_connection = bq_object.get_connection(location=bq_location, chunksize=chunksize)
+
+        for chunk in pd.read_sql(sql=query_str, con=bq_connection, chunksize=chunksize):
+            print(chunk.columns)
+            if not chunk.empty:
+                insert_into_mysql(
+                    dataframe=chunk,
+                    mysqltable=mysqltable
+                )
+
+
     init_config = init_configuration(
                             from_date="{{ params.from_date }}", \
                             to_date="{{ params.to_date }}", \
@@ -222,18 +227,18 @@ with DAG(
                         to_date="{{ params.to_date }}", \
                         init_config=init_config
                     )
-
-    read_data = query_bq_table(
-                        projectid="{{ params.projectid }}", \
-                        init_config=init_config
-                    )
     
-    write_data = insert_data_to_sql(
-                        mysqltable="{{ params.mysqltable }}", \
-                        dataframe=read_data
-                    )
-    
-    init_config >> delete_mysql_table >> read_data >> write_data
+    insert_chunk_to_mysql = insert_into_mysql_by_chunks(
+                                project_id="{{ params.project_id }}", \
+                                bq_location="{{ params.bq_location }}", \
+                                mysqltable="{{ params.mysqltable }}", \
+                                chunksize="{{ params.chunksize }}", \
+                                init_config=init_config
+                            )
 
+
+    # init_config >> delete_mysql_table  >> insert_chunk_to_mysql
+
+    init_config >> insert_chunk_to_mysql
 
 globals()[dag.dag_id] = dag
