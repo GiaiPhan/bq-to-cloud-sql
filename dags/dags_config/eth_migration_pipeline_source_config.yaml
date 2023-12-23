@@ -1,0 +1,25 @@
+# 1. Metadata arguments
+project_id: int-data-ct-spotonchain
+location: asia-southeast1
+default_args:
+  timezone: Asia/Ho_Chi_Minh
+  owner: tu.phan@cloud-ace.com
+  retries: 0
+  retry_delay_sec: 60
+  email: ['tu.phan@cloud-ace.com']
+  email_on_failure: False
+  email_on_retry: False
+start_date: '2023-10-12'
+schedule_interval: '0 16 * * 1'
+tags: ['migration']
+
+# 2. Connections & services used in the pipeline
+gcp_conn_id: int-data-ct-spotonchain-ops-pipeline-connection
+
+# 3. Trigger migration dataflow pipeline
+dataflow_pipeline:
+  ## Configuration for template, network and staging location of Dataflow job
+  template_path: gs://int-data-ct-spotonchain-dataflow-template/demo-pipeline-template.json
+  temp_location: gs://dataflow-staging-asia-southeast1-267252521832/tmp/
+  staging_location: gs://dataflow-staging-asia-southeast1-267252521832/staging/
+  machine_type: n2-standard-4
