@@ -1,0 +1,11 @@
+# Google Cloud Build script for Cloud Teleport
+
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: 
+    - build
+    - --tag=asia-southeast1-docker.pkg.dev/int-data-ct-spotonchain/dataflow-container/pipeline-template-container:latest
+    - --file=./Dockerfile
+    - .
+images:
+- 'asia-southeast1-docker.pkg.dev/int-data-ct-spotonchain/dataflow-container/pipeline-template-container:latest'
