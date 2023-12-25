@@ -15,13 +15,17 @@ class CloudAceConfigUtilsYaml:
         self.config_body = self._parse_config()
 
     def _parse_config(self) -> Dict[str, Any]:
-        check_file = os.path.isfile(self.config_path)
-        if check_file:
-            config = open(self.config_path, 'r')
-            config_body = yaml.load(config, Loader=yaml.FullLoader) 
-            config.close()
-        else:
-            config_body = self._parse_config()
+        # check_file = os.path.isfile(self.config_path)
+        # if check_file:
+        #     config = open(self.config_path, 'r')
+        #     config_body = yaml.load(config, Loader=yaml.FullLoader) 
+        #     config.close()
+        # else:
+        #     config_body = self._parse_config()
+        # return config_body
+        config = open(self.config_path, 'r')
+        config_body = yaml.load(config, Loader=yaml.FullLoader) 
+        config.close()
         return config_body
 
     def get_start_date(self) -> Date:

@@ -8,9 +8,13 @@ from app.common.constant import QUERY_STRING, CLOUDSQL_TABLE_NAME
 class LoadFromBigQueryToCloudSQL(beam.DoFn):
     def process(self, data):
         def delete_from_mysql(delete_query, from_date, to_date):
-            mysql_object = MySQL()
+            from datetime import datetime, timedelta
 
-            mysql_object.execute(delete_query, (from_date, to_date))
+            mysql_object = MySQL()
+            date_plus_one = datetime.strptime(to_date, "%Y-%m-%d") + timedelta(days=1)
+            date_plus_one = date_plus_one.strftime("%Y-%m-%d")
+
+            mysql_object.execute(delete_query, (from_date, date_plus_one))
 
 
         def load_from_bigquery_to_cloudsql(query_string, cloudsql_table_name):
