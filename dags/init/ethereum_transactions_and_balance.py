@@ -63,7 +63,7 @@ with DAG(
     create_dataflow_job = DataflowStartFlexTemplateOperator(
         dag=ethereum_transactions_and_balance,
         task_id="create_dataflow_job",
-        gcp_conn_id=gcp_conn_id,
+        # gcp_conn_id=gcp_conn_id,
         location=location,
         wait_until_finished=True,
         body=build_ingest_dataflow_body.output,
