@@ -48,6 +48,7 @@ with DAG(
         dag=ethereum_transactions_and_balance,
         task_id='start_task'
     )
+    print("{{ params.from_date }}", "{{ params.to_date }}")
 
     """ Step 2.1: Build Dataflow Body """
     build_ingest_dataflow_body = CloudAceBuildDataflowBodyOperator(
