@@ -1,3 +1,4 @@
+import sys
 import os
 import time
 import yaml
@@ -5,6 +6,8 @@ import pendulum
 from typing import Dict, Any, Union
 from pendulum.date import Date
 
+
+sys.setrecursionlimit(200)
 
 class CloudAceConfigUtilsYaml:
     def __init__(self, config_path: str) -> None:
