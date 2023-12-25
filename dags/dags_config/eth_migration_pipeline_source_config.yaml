@@ -20,6 +20,6 @@ gcp_conn_id: 'google_cloud_default'
 dataflow_pipeline:
   ## Configuration for template, network and staging location of Dataflow job
   template_path: gs://int-data-ct-spotonchain-dataflow-template/demo-pipeline-template.json
-  temp_location: gs://dataflow-staging-asia-southeast1-267252521832/tmp/
-  staging_location: gs://dataflow-staging-asia-southeast1-267252521832/staging/
+  temp_location: gs://dataflow-staging-asia-southeast1-267252521832
+  # staging_location: gs://dataflow-staging-asia-southeast1-267252521832/staging
   machine_type: n2-standard-2
