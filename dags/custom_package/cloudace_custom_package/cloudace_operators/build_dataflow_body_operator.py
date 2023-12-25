@@ -16,6 +16,8 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
         self.from_date = from_date
         self.to_date = to_date
 
+        print(self.from_date, self.to_date)
+
 
     def execute(self, context: Context) -> dict:
         ti = context["ti"]
