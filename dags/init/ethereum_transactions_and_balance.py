@@ -14,7 +14,7 @@ from airflow.providers.google.cloud.operators.dataflow import DataflowStartFlexT
 from dags.custom_package.cloudace_custom_package.cloudace_operators.build_dataflow_body_operator_onetime import CloudAceBuildDataflowBodyOperator
 
 # from dags.utils.email import _send_successful_email_notification
-from dags.utils.ca_utils import MySQL, BigQuery
+# from dags.utils.ca_utils import MySQL, BigQuery
 from dags.utils.config_utils import CloudAceConfigUtilsYaml
 
 import pandas as pd
@@ -53,8 +53,8 @@ with DAG(
         dag=ethereum_transactions_and_balance,
         task_id='build_ingest_dataflow_body',
         job_name_prefix="eth_migrate",
-        from_date="{{params.from_date}}",
-        to_date="{{params.to_date}}",
+        # from_date="{{params.from_date}}",
+        # to_date="{{params.to_date}}",
         dataflow_config=dataflow_training_pipeline
     )
 
