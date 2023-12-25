@@ -53,7 +53,7 @@ with DAG(
     build_ingest_dataflow_body = CloudAceBuildDataflowBodyOperator(
         dag=ethereum_transactions_and_balance,
         task_id='build_ingest_dataflow_body',
-        job_name_prefix="eth_migrate",
+        job_name_prefix="eth-migrate",
         from_date="{{params.from_date}}",
         to_date="{{params.to_date}}",
         dataflow_config=dataflow_training_pipeline
