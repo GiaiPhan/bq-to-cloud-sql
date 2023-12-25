@@ -26,7 +26,7 @@ config_body = config.config_body
 project_id = config_body["project_id"]
 location = config_body["location"]
 gcp_conn_id=config_body["gcp_conn_id"]
-dataflow_training_pipeline = config_body["dataflow_training_pipeline"]
+dataflow_training_pipeline = config_body["dataflow_pipeline"]
 default_args = config_body["default_args"]
 
 
