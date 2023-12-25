@@ -17,7 +17,7 @@ from dags.custom_package.cloudace_custom_package.cloudace_operators.build_datafl
 # from dags.utils.ca_utils import MySQL, BigQuery
 from dags.utils.config_utils import CloudAceConfigUtilsYaml
 
-import pandas as pd
+# import pandas as pd
 
 
 config = CloudAceConfigUtilsYaml("/home/airflow/airflow-base-resource-2/dags/dags_config/migration_pipeline_source_config.yaml")

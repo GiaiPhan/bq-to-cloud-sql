@@ -25,7 +25,7 @@ def execute_demo_pipeline(pipeline, from_date, to_date):
     migration_list = list()
 
     balance_query_string = """SELECT * FROM `bigquery-public-data.crypto_ethereum.balances`"""
-    all_transfers_query_string = """
+    all_transfers_query_string = f"""
         WITH transfers_token AS (
           SELECT
             transaction_hash AS txn_hash,
