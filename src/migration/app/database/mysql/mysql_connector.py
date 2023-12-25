@@ -23,3 +23,9 @@ class MySQL:
             self.db.execute(query)
         else:
             self.db.execute(query, params)
+
+
+    def truncate(self, table_name):
+        self.db.execute(
+            f"TRUNCATE TABLE {table_name};"
+        )

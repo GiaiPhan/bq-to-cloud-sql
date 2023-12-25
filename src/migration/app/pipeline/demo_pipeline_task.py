@@ -16,6 +16,11 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
 
             mysql_object.execute(delete_query, (from_date, date_plus_one))
 
+        def truncate_mysql_table(cloudsql_table_name):
+
+            mysql_object = MySQL()
+            mysql_object.truncate(cloudsql_table_name)
+
 
         def load_from_bigquery_to_cloudsql(query_string, cloudsql_table_name):
             """
@@ -48,16 +53,22 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
         from timeit import default_timer as timer
 
         start = timer()
-        delete_from_mysql(
-            delete_query=data.get("delete_query"),
-            from_date=data.get("from_date"),
-            to_date=data.get("to_date")
-        )
+        if data.get(CLOUDSQL_TABLE_NAME, "") != "":
+            if data.get(CLOUDSQL_TABLE_NAME, "") == "all_transfers":
+                delete_from_mysql(
+                    delete_query=data.get("delete_query"),
+                    from_date=data.get("from_date"),
+                    to_date=data.get("to_date")
+                )
+            else:
+                truncate_mysql_table(
+                    cloudsql_table_name=data.get(CLOUDSQL_TABLE_NAME, "")
+                )
 
-        load_from_bigquery_to_cloudsql(
-            query_string=data.get(QUERY_STRING, ""),
-            cloudsql_table_name=data.get(CLOUDSQL_TABLE_NAME, "")
-        )
+            load_from_bigquery_to_cloudsql(
+                query_string=data.get(QUERY_STRING, ""),
+                cloudsql_table_name=data.get(CLOUDSQL_TABLE_NAME, "")
+            )
 
         end = timer()
 
