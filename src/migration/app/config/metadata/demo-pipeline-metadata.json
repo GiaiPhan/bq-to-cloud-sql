@@ -1,4 +1,16 @@
 {
-  "name": "Dataflow Demo Pipeline flex template",
-  "description": "Dataflow Demo Pipeline flex template"
+  "name": "SpotOnChain Demo BigQuery to Cloud SQL",
+  "description": "SpotOnChain Demo BigQuery to Cloud SQL",
+  "parameters":[
+    {
+      "name": "from_date",
+      "label": "From date",
+      "helpText": "From date"
+    },
+    {
+      "name": "to_date",
+      "label": "To date",
+      "helpText": "To date"
+    }
+  ]
 }

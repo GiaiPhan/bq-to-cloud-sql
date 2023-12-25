@@ -16,7 +16,7 @@ def convert_to_beam_profiles(migration_list):
     return result
 
 
-def execute_demo_pipeline(pipeline):
+def execute_demo_pipeline(pipeline, from_date, to_date):
     """
     function to execute pipeline
     @param pipeline: obj.
@@ -56,8 +56,8 @@ def execute_demo_pipeline(pipeline):
             `bigquery-public-data.crypto_ethereum.contracts` AS ct
           ON 
             tt.token_address=ct.address
-          WHERE TIMESTAMP_TRUNC(tt.block_timestamp, DAY) >= TIMESTAMP('2023-12-20')
-            AND TIMESTAMP_TRUNC(tt.block_timestamp, DAY) <= TIMESTAMP('2023-12-20')
+          WHERE TIMESTAMP_TRUNC(tt.block_timestamp, DAY) >= TIMESTAMP('{from_date}')
+            AND TIMESTAMP_TRUNC(tt.block_timestamp, DAY) <= TIMESTAMP('{to_date}')
         ),
         transfers_external AS (
           SELECT
@@ -78,8 +78,8 @@ def execute_demo_pipeline(pipeline):
             `bigquery-public-data.crypto_ethereum.transactions`
           WHERE 
             value > 0
-            AND TIMESTAMP_TRUNC(block_timestamp, DAY) >= TIMESTAMP('2023-12-20')
-            AND TIMESTAMP_TRUNC(block_timestamp, DAY) <= TIMESTAMP('2023-12-20')
+            AND TIMESTAMP_TRUNC(block_timestamp, DAY) >= TIMESTAMP('{from_date}')
+            AND TIMESTAMP_TRUNC(block_timestamp, DAY) <= TIMESTAMP('{to_date}')
         ),
         transfers_internal AS (
           SELECT
@@ -103,8 +103,8 @@ def execute_demo_pipeline(pipeline):
             AND from_address IS NOT NULL
             AND to_address IS NOT NULL
             AND value > 0
-            AND TIMESTAMP_TRUNC(block_timestamp, DAY) >= TIMESTAMP('2023-12-20')
-            AND TIMESTAMP_TRUNC(block_timestamp, DAY) <= TIMESTAMP('2023-12-20')
+            AND TIMESTAMP_TRUNC(block_timestamp, DAY) >= TIMESTAMP('{from_date}')
+            AND TIMESTAMP_TRUNC(block_timestamp, DAY) <= TIMESTAMP('{to_date}')
         ),
         transfers_withdrawal as (SELECT
             CAST(w.index AS STRING) as txn_hash,
@@ -123,8 +123,8 @@ def execute_demo_pipeline(pipeline):
           FROM
             `bigquery-public-data.crypto_ethereum.blocks` AS b
             CROSS JOIN UNNEST(withdrawals) AS w
-          WHERE TIMESTAMP_TRUNC(timestamp, DAY) >= TIMESTAMP('2023-12-20')
-            AND TIMESTAMP_TRUNC(timestamp, DAY) <= TIMESTAMP('2023-12-20')
+          WHERE TIMESTAMP_TRUNC(timestamp, DAY) >= TIMESTAMP('{from_date}')
+            AND TIMESTAMP_TRUNC(timestamp, DAY) <= TIMESTAMP('{to_date}')
         )
         SELECT
           *
@@ -147,20 +147,32 @@ def execute_demo_pipeline(pipeline):
           transfers_withdrawal
     """
 
+    delete_query = """
+        DELETE FROM spotonchain_demo.all_transfers 
+        WHERE txn_ts >= UNIX_TIMESTAMP(%s)
+          AND txn_ts <= UNIX_TIMESTAMP(%s)
+    """
+
     balance_cloudsql_table_name = "balances"
     all_transfers_cloudsql_table_name = "all_transfers"
 
     balance_migration_profile = MigrationProfileModel(
         query_string=balance_query_string,
-        cloudsql_table_name=balance_cloudsql_table_name
+        cloudsql_table_name=balance_cloudsql_table_name,
+        delete_query=delete_query,
+        from_date=from_date,
+        to_date=to_date
     )
 
     all_transfers_migration_profile = MigrationProfileModel(
         query_string=all_transfers_query_string,
-        cloudsql_table_name=all_transfers_cloudsql_table_name
+        cloudsql_table_name=all_transfers_cloudsql_table_name,
+        delete_query=delete_query,
+        from_date=from_date,
+        to_date=to_date
     )
 
-    migration_list.append(balance_migration_profile)
+    # migration_list.append(balance_migration_profile)
     migration_list.append(all_transfers_migration_profile)
 
     beam_profiles = convert_to_beam_profiles(migration_list)

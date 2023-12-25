@@ -11,7 +11,7 @@ from airflow.decorators import dag, task
 from airflow.operators.empty import EmptyOperator
 from airflow.providers.google.cloud.operators.dataflow import DataflowStartFlexTemplateOperator
 
-from dags.custom_package.cloudace_custom_package.cloudace_operators.build_dataflow_body_operator_onetime import CloudAceBuildDataflowBodyOperator
+from dags.custom_package.cloudace_custom_package.cloudace_operators.build_dataflow_body_operator import CloudAceBuildDataflowBodyOperator
 
 # from dags.utils.email import _send_successful_email_notification
 # from dags.utils.ca_utils import MySQL, BigQuery
@@ -32,7 +32,7 @@ default_args = config_body["default_args"]
 with DAG(
     dag_id="ethereum_transactions_and_balance",
     tags=["trigger"],
-    start_date=dt.datetime(2023, 12, 23),
+    start_date=dt.datetime(2023, 12, 25),
     schedule_interval=None,
     params={
         "from_date": "2023-12-21",
@@ -53,8 +53,8 @@ with DAG(
         dag=ethereum_transactions_and_balance,
         task_id='build_ingest_dataflow_body',
         job_name_prefix="eth_migrate",
-        # from_date="{{params.from_date}}",
-        # to_date="{{params.to_date}}",
+        from_date="{{params.from_date}}",
+        to_date="{{params.to_date}}",
         dataflow_config=dataflow_training_pipeline
     )
 

@@ -9,10 +9,14 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
         "dataflow_config",
     )
 
-    def __init__(self, job_name_prefix: str,  dataflow_config: dict, *args, **kwargs) -> None:
+    def __init__(self, job_name_prefix: str,  dataflow_config: dict, from_date: str, to_date: str, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.job_name_prefix = job_name_prefix
         self.dataflow_config = dataflow_config
+        self.from_date = from_date
+        self.to_date = to_date
+
+
     def execute(self, context: Context) -> dict:
         ti = context["ti"]
         run_id = context.get("run_id")
@@ -58,6 +62,8 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
                 "machineType": self.dataflow_config["machine_type"] if "machine_type" in self.dataflow_config.keys() else "n1-standard-2"
             },
             "parameters": {
+                "from_date": self.from_date,
+                "to_date": self.to_date
             }
         }
 

@@ -7,6 +7,11 @@ from app.common.constant import QUERY_STRING, CLOUDSQL_TABLE_NAME
 
 class LoadFromBigQueryToCloudSQL(beam.DoFn):
     def process(self, data):
+        def delete_from_mysql(delete_query, from_date, to_date):
+            mysql_object = MySQL()
+
+            mysql_object.execute(delete_query, (from_date, to_date))
+
 
         def load_from_bigquery_to_cloudsql(query_string, cloudsql_table_name):
             """
@@ -39,10 +44,17 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
         from timeit import default_timer as timer
 
         start = timer()
+        delete_from_mysql(
+            delete_query=data.get("delete_query"),
+            from_date=data.get("from_date"),
+            to_date=data.get("to_date")
+        )
+
         load_from_bigquery_to_cloudsql(
             query_string=data.get(QUERY_STRING, ""),
             cloudsql_table_name=data.get(CLOUDSQL_TABLE_NAME, "")
         )
+
         end = timer()
 
         logging.info(f'Total time: {round((end - start) / 60, 2)} minutes')
