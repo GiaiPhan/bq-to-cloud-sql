@@ -57,7 +57,7 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
             "jobName": f"{self.job_name_prefix}-{ds_nodash}",
             "containerSpecGcsPath": self.dataflow_config['template_path'],
             "environment": {
-                "tempLocation": self.dataflow_config['temp_location'],
+                # "tempLocation": self.dataflow_config['temp_location'],
                 "ipConfiguration": "WORKER_IP_PRIVATE",
                 "machineType": self.dataflow_config["machine_type"] if "machine_type" in self.dataflow_config.keys() else "n1-standard-2",
                 "numWorkers": 2,
