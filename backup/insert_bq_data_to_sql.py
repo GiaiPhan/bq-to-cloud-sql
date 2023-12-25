@@ -9,7 +9,7 @@ from airflow.decorators import dag, task
 from airflow.models import Variable
 
 from utils.email import _send_successful_email_notification
-from dags.utils.gcp_utils import MySQL, BigQuery
+from backup.gcp_utils import MySQL, BigQuery
 
 query_base = """
         SELECT 
