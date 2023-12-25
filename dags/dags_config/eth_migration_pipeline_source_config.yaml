@@ -22,4 +22,4 @@ dataflow_pipeline:
   template_path: gs://int-data-ct-spotonchain-dataflow-template/demo-pipeline-template.json
   temp_location: gs://dataflow-staging-asia-southeast1-267252521832/tmp/
   staging_location: gs://dataflow-staging-asia-southeast1-267252521832/staging/
-  machine_type: n2-standard-4
+  machine_type: n2-standard-2

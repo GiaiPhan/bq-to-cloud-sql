@@ -59,7 +59,9 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
             "environment": {
                 "tempLocation": self.dataflow_config['temp_location'],
                 "ipConfiguration": "WORKER_IP_PRIVATE",
-                "machineType": self.dataflow_config["machine_type"] if "machine_type" in self.dataflow_config.keys() else "n1-standard-2"
+                "machineType": self.dataflow_config["machine_type"] if "machine_type" in self.dataflow_config.keys() else "n1-standard-2",
+                "numWorkers": 2,
+                "maxWorkers": 4
             },
             "parameters": {
                 "from_date": self.from_date,
