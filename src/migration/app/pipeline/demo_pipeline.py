@@ -150,7 +150,7 @@ def execute_demo_pipeline(pipeline, from_date, to_date):
     delete_query = """
         DELETE FROM spotonchain_demo.all_transfers 
         WHERE txn_ts >= UNIX_TIMESTAMP(%s)
-          AND txn_ts <= UNIX_TIMESTAMP(%s)
+          AND txn_ts < UNIX_TIMESTAMP(%s)
     """
 
     balance_cloudsql_table_name = "balances"
