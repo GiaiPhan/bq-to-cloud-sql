@@ -10,7 +10,7 @@ class MySQL:
     temp_update_table = 'temp_update'
 
     def __init__(self, 
-                 host="34.124.221.251", user="userdemo", 
+                 host="10.98.32.3", user="userdemo", 
                  password="m9{f]3o&$IG7kRYh", database="spotonchain_demo"
     ):
         self.db = create_engine('mysql://{user}:{password}@{host}/{database}'.format(
