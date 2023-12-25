@@ -20,7 +20,7 @@ from dags.utils.config_utils import CloudAceConfigUtilsYaml
 # import pandas as pd
 
 
-config = CloudAceConfigUtilsYaml("/home/airflow/airflow-base-resource-2/dags/dags_config/migration_pipeline_source_config.yaml")
+config = CloudAceConfigUtilsYaml("dags/dags_config/migration_pipeline_source_config.yaml")
 config_body = config.config_body
 project_id = config_body["project_id"]
 location = config_body["location"]
