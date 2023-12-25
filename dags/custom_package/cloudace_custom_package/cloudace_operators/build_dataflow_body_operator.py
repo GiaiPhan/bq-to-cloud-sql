@@ -9,17 +9,14 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
         "dataflow_config",
     )
 
-    def __init__(self, job_name_prefix: str,  dataflow_config: dict, from_date: str, to_date: str, *args, **kwargs) -> None:
+    def __init__(self, job_name_prefix: str,  dataflow_config: dict, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.job_name_prefix = job_name_prefix
         self.dataflow_config = dataflow_config
-        self.from_date = from_date
-        self.to_date = to_date
-
-        print(self.from_date, self.to_date)
 
 
     def execute(self, context: Context) -> dict:
+        print(context["params"])
         ti = context["ti"]
         run_id = context.get("run_id")
         ds_nodash = context.get("ds_nodash")
@@ -66,9 +63,10 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
                 "maxWorkers": 4
             },
             "parameters": {
-                "from_date": self.from_date,
-                "to_date": self.to_date
+                "from_date": context["params"]["from_date"],
+                "to_date": context["params"]["to_date"]
             }
         }
+        
 
         return dataflow_body
