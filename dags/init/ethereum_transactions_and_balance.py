@@ -55,8 +55,8 @@ with DAG(
         dag=ethereum_transactions_and_balance,
         task_id='build_ingest_dataflow_body',
         job_name_prefix="eth-migrate",
-        from_date="{{ task.params.from_date }}",
-        to_date="{{ task.params.to_date }}",
+        from_date={{ task.params.from_date }},
+        to_date={{ task.params.to_date }},
         dataflow_config=dataflow_training_pipeline
     )
 
