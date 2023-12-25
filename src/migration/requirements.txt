@@ -1,0 +1,9 @@
+pandas == 1.5.2
+protobuf==3.20.3
+pybigquery==0.10.2
+SQLAlchemy==1.4.47
+apache-beam==2.43.0
+pandas-gbq==0.17.0
+mysql-connector-python==8.0.*
+google-cloud-bigquery==2.34.4
+google-api-python-client==2.101.0

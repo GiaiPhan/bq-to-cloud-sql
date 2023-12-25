@@ -33,7 +33,8 @@ query_base = """
         ON trans.block_number = cont.block_number 
     LEFT JOIN `bigquery-public-data.crypto_ethereum.tokens` tok 
         ON trans.block_number = tok.block_number 
-    WHERE TIMESTAMP_TRUNC(trans.block_timestamp, DAY) >= TIMESTAMP('{query_date}')
+    WHERE TIMESTAMP_TRUNC(trans.block_timestamp, DAY) >= TIMESTAMP('{from_date}')
+    AND TIMESTAMP_TRUNC(trans.block_timestamp, DAY) <= TIMESTAMP('{to_date}')
 """
 
 
@@ -45,46 +46,50 @@ with DAG(
     start_date=dt.datetime(2023, 12, 17),
     schedule_interval=None,
     params={
-        "timezone": "America/Mexico_City",
-        "bucket":"int-data-ct-spotonchain-bq-cloudsql-temp",
         "projectid":"int-data-ct-spotonchain",
-        "prefix":"ethereum_transfer_tab_",
-        "table_folder":"ethereum_transfer_tab",
-        "query_date": "2018-01-01",
+        "bucket":"int-data-ct-spotonchain-bq-cloudsql-temp",
         "instance":"spotonchain-test",
         "databaseschema":"spotonchain_db",
         "importtable":"ethereum_transfer_tab",
-        "listResult": {"nextPageToken":""}
+        "from_date": "2018-01-01",
+        "to_date": "2100-01-01",
+        "timezone": "America/Mexico_City"
     },
 
 ) as dag:
+    
     @task()
-    def export_bq_table(bucket, prefix, table_folder, projectid, query_date, upstream_task):
+    def init_daily_config(bucket, importtable, from_date, to_date):
+        prefix = importtable + "_"
+        table_folder = importtable + "_from_" + str(from_date) + "_to_" + str(to_date)
+        listResult = {"nextPageToken":""}
+        query_str = "EXPORT DATA OPTIONS( uri='gs://" + bucket + "/" + table_folder + "/" + prefix + "*.csv', format='CSV', overwrite=true,header=false) AS " + query_base.format(from_date=from_date, to_date=to_date)
+
+        return {"prefix": prefix, "table_folder": table_folder, "listResult": listResult, "query_str": query_str}
+
+    @task()
+    def export_bq_table(projectid, **kwargs):
             
         from google.cloud import bigquery
         client = bigquery.Client(project=projectid)
-
-        table_folder = table_folder + "_from_" + str(query_date)
-        query_str = "EXPORT DATA OPTIONS( uri='gs://" + bucket + "/" + table_folder + "/" + prefix + "*.csv', format='CSV', overwrite=true,header=false) AS " + query_base.format(query_date=query_date)
         
         # Perform a query.
-        query_job = client.query(query_str)  # API request
+        query_job = client.query(kwargs["init_config"]["query_str"])  # API request
         rows = query_job.result()  # Waits for query to finish
     
     @task()
-    def list_gcs_files(bucket, table_folder, prefix, query_date, upstream_task, delimiter="/"):
+    def list_gcs_files(bucket, delimiter="/", **kwargs):
         from google.cloud import storage
         """Lists all the blobs in the bucket."""
         storage_client = storage.Client()
 
-        table_folder = table_folder + "_from_" + str(query_date)
         # Note: Client.list_blobs requires at least package version 1.17.0.
-        blobs = storage_client.list_blobs(bucket, prefix=table_folder + "/" + prefix, delimiter=delimiter)
+        blobs = storage_client.list_blobs(bucket, prefix=kwargs["init_config"]["table_folder"] + "/" + kwargs["init_config"]["prefix"], delimiter=delimiter)
         
         return [blob.name for blob in blobs]
 
     @task()
-    def import_gcs_to_cloudsql(bucket, prefix, table_folder, projectid, instance, databaseschema, importtable, gcs_files):
+    def import_gcs_to_cloudsql(bucket, projectid, instance, databaseschema, importtable, gcs_files):
         # Construct the service object for the interacting with the Cloud SQL Admin API.
         service = googleapiclient.discovery.build('sqladmin', 'v1beta4')
         # sql_instance = service.instances().get(project=projectid, instance=instance).execute()
@@ -121,10 +126,10 @@ with DAG(
         return {"status": "", "failed_files": failed_files}
 
     @task()
-    def delete_temporary_gcs_files(bucket, table_folder, query_date):
+    def delete_temporary_gcs_files(bucket, **kwargs):
         from google.cloud import storage
 
-        table_folder = table_folder + "_from_" + str(query_date)
+        table_folder = kwargs["init_config"]["table_folder"]
 
         client = storage.Client()
         bucket = client.get_bucket(bucket)
@@ -132,35 +137,40 @@ with DAG(
         blobs = bucket.list_blobs(prefix=table_folder)
         for blob in blobs:
             blob.delete()
-            
-    delete_files = delete_temporary_gcs_files(bucket="{{ params.bucket }}", \
-                               table_folder="{{ params.table_folder }}",
-                               query_date="{{ params.query_date }}"
-                            )
-
-
-    export_bq = export_bq_table(bucket="{{ params.bucket }}", \
-                        prefix="{{ params.prefix }}", \
-                        table_folder="{{ params.table_folder }}", \
-                        projectid="{{ params.projectid }}", \
-                        query_date="{{ params.query_date }}",
-                        upstream_task=delete_files
-                    )
-
-    list_files = list_gcs_files(bucket="{{ params.bucket }}", \
-                       table_folder="{{ params.table_folder }}", \
-                       prefix="{{ params.prefix }}",
-                       query_date="{{ params.query_date }}",
-                       upstream_task=export_bq
-                       )
     
-    imp_operation = import_gcs_to_cloudsql(bucket="{{ params.bucket }}", \
-                               prefix="{{ params.prefix }}", \
-                               table_folder="{{ params.table_folder }}", \
-                               projectid="{{ params.projectid }}", \
-                               instance="{{ params.instance }}", \
-                               databaseschema="{{ params.databaseschema }}", \
-                               importtable="{{ params.importtable }}",
-                               gcs_files=list_files)
+    init_config = init_daily_config(
+        bucket="{{ params.bucket }}", \
+        importtable="{{ params.importtable }}", \
+        from_date="{{ params.from_date }}", \
+        to_date="{{ params.to_date }}"
+    )
+
+    delete_files = delete_temporary_gcs_files(
+        bucket="{{ params.bucket }}", \
+        init_config=init_config
+    )
+
+    export_bq = export_bq_table(
+        projectid="{{ params.projectid }}",
+        init_config=init_config
+    )
+
+    list_files = list_gcs_files(
+        bucket="{{ params.bucket }}",
+        init_config=init_config
+    )
+    
+    imp_operation = import_gcs_to_cloudsql(
+        bucket="{{ params.bucket }}", \
+        projectid="{{ params.projectid }}", \
+        instance="{{ params.instance }}", \
+        databaseschema="{{ params.databaseschema }}", \
+        importtable="{{ params.importtable }}",
+        gcs_files=list_files
+    )
+
+    # dag
+    init_config >> delete_files >> export_bq >> list_files >> imp_operation
+
 
 globals()[dag.dag_id] = dag
