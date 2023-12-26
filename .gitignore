@@ -1,1 +1,4 @@
-dumper/backup/*
+.idea
+.DS_Store
+
+~/.vscode-root/*
