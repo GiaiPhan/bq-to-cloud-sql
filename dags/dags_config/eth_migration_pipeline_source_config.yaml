@@ -23,3 +23,4 @@ dataflow_pipeline:
   temp_location: gs://dataflow-staging-asia-southeast1-267252521832
   # staging_location: gs://dataflow-staging-asia-southeast1-267252521832/staging
   machine_type: n2-standard-2
+  timeout: 5

@@ -28,6 +28,7 @@ location = config_body["location"]
 gcp_conn_id=config_body["gcp_conn_id"]
 dataflow_training_pipeline = config_body["dataflow_pipeline"]
 default_args = config_body["default_args"]
+timeout = config_body["timeout"]
 
 
 with DAG(
@@ -67,7 +68,7 @@ with DAG(
         wait_until_finished=True,
         body=build_ingest_dataflow_body.output,
         project_id=project_id,
-        execution_timeout=timedelta(hours=1)
+        execution_timeout=timedelta(hours=timeout)
     )
     
     """ Step 3: Dummy end task """
