@@ -39,6 +39,7 @@ with DAG(
     params={
         "from_date": "2023-12-21",
         "to_date": "2023-12-22",
+        "migration_balance": 'false',
         "listResult": {"nextPageToken":""}
     },
 

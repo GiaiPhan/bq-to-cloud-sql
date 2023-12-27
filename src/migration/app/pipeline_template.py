@@ -12,11 +12,13 @@ if __name__ == "__main__":
 
     parser.add_argument('--from_date', required=True, help='Environment that Migration Pipeline run on')
     parser.add_argument('--to_date', required=True, help='Environment that Migration Pipeline run on')
+    parser.add_argument('--migrate_balance', required=True, default='true', help='Environment that Migration Pipeline run on')
 
     known_args, pipeline_args = parser.parse_known_args()
 
     from_date = known_args.from_date
     to_date = known_args.to_date
+    migrate_balance = known_args.migrate_balance
 
     # build pipeline option
     options = PipelineOptions(
@@ -36,7 +38,8 @@ if __name__ == "__main__":
     execute_demo_pipeline(
         pipeline=pipeline,
         from_date=from_date,
-        to_date=to_date
+        to_date=to_date,
+        migrate_balance=migrate_balance
     )
 
     pipeline.run()

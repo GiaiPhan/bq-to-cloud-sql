@@ -16,7 +16,7 @@ def convert_to_beam_profiles(migration_list):
     return result
 
 
-def execute_demo_pipeline(pipeline, from_date, to_date):
+def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false'):
     """
     function to execute pipeline
     @param pipeline: obj.
@@ -172,7 +172,9 @@ def execute_demo_pipeline(pipeline, from_date, to_date):
         to_date=to_date
     )
 
-    migration_list.append(balance_migration_profile)
+    if migrate_balance == 'true':
+      migration_list.append(balance_migration_profile)
+    
     migration_list.append(all_transfers_migration_profile)
 
     beam_profiles = convert_to_beam_profiles(migration_list)
