@@ -1,6 +1,9 @@
 import apache_beam as beam
 from app.model.migration_model import MigrationProfileModel
 from app.pipeline.demo_pipeline_task import LoadFromBigQueryToCloudSQL
+import pandas as pd
+from datetime import timedelta
+
 
 
 def convert_to_beam_profiles(migration_list):
@@ -156,6 +159,25 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
     balance_cloudsql_table_name = "balances"
     all_transfers_cloudsql_table_name = "all_transfers"
 
+
+    start_date = from_date
+
+    for _single_date in pd.date_range(from_date, to_date):
+      all_transfers_migration_profile = MigrationProfileModel(
+          query_string=all_transfers_query_string,
+          cloudsql_table_name=all_transfers_cloudsql_table_name,
+          delete_query=delete_query,
+          from_date=start_date,
+          to_date=_single_date.strftime("%Y-%m-%d")
+      )
+      
+      migration_list.append(all_transfers_migration_profile)
+
+      start_date = (_single_date + timedelta(days=1)).strftime("%Y-%m-%d")
+
+      if _single_date == to_date:
+        break
+
     balance_migration_profile = MigrationProfileModel(
         query_string=balance_query_string,
         cloudsql_table_name=balance_cloudsql_table_name,
@@ -163,19 +185,8 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
         from_date=from_date,
         to_date=to_date
     )
-
-    all_transfers_migration_profile = MigrationProfileModel(
-        query_string=all_transfers_query_string,
-        cloudsql_table_name=all_transfers_cloudsql_table_name,
-        delete_query=delete_query,
-        from_date=from_date,
-        to_date=to_date
-    )
-
     if migrate_balance == 'true':
       migration_list.append(balance_migration_profile)
-    
-    migration_list.append(all_transfers_migration_profile)
 
     beam_profiles = convert_to_beam_profiles(migration_list)
 
