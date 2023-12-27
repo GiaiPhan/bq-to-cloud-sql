@@ -65,7 +65,7 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
             "parameters": {
                 "from_date": context["params"]["from_date"],
                 "to_date": context["params"]["to_date"],
-                "migration_balance": context["params"]["migration_balance"]
+                "migrate_balance": context["params"]["migrate_balance"]
             }
         }
         
