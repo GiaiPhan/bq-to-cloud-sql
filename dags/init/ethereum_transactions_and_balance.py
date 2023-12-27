@@ -39,8 +39,7 @@ with DAG(
     params={
         "from_date": "2023-12-21",
         "to_date": "2023-12-22",
-        "migrate_balance": 'false',
-        "listResult": {"nextPageToken":""}
+        "migrate_balance": 'false'
     },
 
 ) as ethereum_transactions_and_balance:
