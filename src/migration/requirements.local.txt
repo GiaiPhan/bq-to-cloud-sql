@@ -2,13 +2,13 @@ pytz==2023.3
 pydash==7.0.6
 numpy==1.24.*
 pandas==1.5.2
-pandas-gbq==0.19.2
-pybigquery
+# pandas-gbq==0.19.2
+# pybigquery
 SQLAlchemy==1.4.47
 marshmallow==3.19.0
 apache-beam
 google-cloud-logging==3.6.0
-google-cloud-aiplatform==1.34.0
+# google-cloud-aiplatform==1.34.0
 google-cloud-bigquery[pandas]==3.11.4
-google-cloud-secret-manager==2.16.3
+# google-cloud-secret-manager==2.16.3
 mysql-connector-python==8.0.*
