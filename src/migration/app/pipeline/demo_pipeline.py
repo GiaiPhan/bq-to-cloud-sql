@@ -28,7 +28,7 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
     migration_list = list()
 
     balance_query_string = """SELECT * FROM `bigquery-public-data.crypto_ethereum.balances`"""
-    all_transfers_query_string = f"""
+    all_transfers_query_string = """
         WITH transfers_token AS (
           SELECT
             transaction_hash AS txn_hash,
@@ -164,7 +164,10 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
 
     for _single_date in pd.date_range(from_date, to_date):
       all_transfers_migration_profile = MigrationProfileModel(
-          query_string=all_transfers_query_string,
+          query_string=all_transfers_query_string.format(
+            from_date=start_date,
+            to_date=_single_date.strftime("%Y-%m-%d")
+          ),
           cloudsql_table_name=all_transfers_cloudsql_table_name,
           delete_query=delete_query,
           from_date=start_date,
