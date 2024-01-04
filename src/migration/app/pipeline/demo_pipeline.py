@@ -29,13 +29,14 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
 
     balance_query_string = """SELECT * FROM `bigquery-public-data.crypto_ethereum.balances`"""
     all_transfers_query_string = """
-        WITH transfers_token AS (
+        WITH
+          transfers_token AS (
           SELECT
             transaction_hash AS txn_hash,
             tt.block_hash,
             CASE
-             WHEN ct.is_erc721 THEN 200   --ERC721 Token transfer
-             ELSE 10                      --ERC20 Token transfer
+            WHEN ct.is_erc721 THEN 200   --ERC721 Token transfer
+            ELSE 10                      --ERC20 Token transfer
             END AS transfer_type, 
             log_index AS ref_index,
             tt.block_number,
@@ -44,12 +45,12 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
             from_address,
             to_address,
             CASE
-             WHEN ct.is_erc721 THEN value
-             ELSE "0"
+            WHEN ct.is_erc721 THEN value
+            ELSE "0"
             END AS token_id,
             CASE 
-             WHEN ct.is_erc721 THEN 1
-             ELSE SAFE_CAST(value as BIGNUMERIC)/POW(10, 6)
+            WHEN ct.is_erc721 THEN 1
+            ELSE SAFE_CAST(value as BIGNUMERIC)
             END AS quantity,
             "0x0000000000000000000000000000000000000000" AS operator_address,
             GENERATE_UUID() AS id
@@ -60,35 +61,16 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
           ON 
             tt.token_address=ct.address
           WHERE TIMESTAMP_TRUNC(tt.block_timestamp, DAY) >= TIMESTAMP('{from_date}')
-            AND TIMESTAMP_TRUNC(tt.block_timestamp, DAY) <= TIMESTAMP('{to_date}')
+                    AND TIMESTAMP_TRUNC(tt.block_timestamp, DAY) <= TIMESTAMP('{to_date}')
         ),
-        transfers_external AS (
-          SELECT
-            `hash` AS txn_hash,
-            block_hash,
-            1 AS transfer_type, --Native transfer
-            0 AS ref_index,
-            block_number,
-            UNIX_SECONDS(block_timestamp) AS txn_ts,
-            "0x0000000000000000000000000000000000000000" AS contract_address,
-            from_address,
-            to_address,
-            "0" AS token_id,
-            CAST(value as BIGNUMERIC)/POW(10, 6) AS quantity,
-            "0x0000000000000000000000000000000000000000" AS operator_address,
-            GENERATE_UUID() AS id
-          FROM
-            `bigquery-public-data.crypto_ethereum.transactions`
-          WHERE 
-            value > 0
-            AND TIMESTAMP_TRUNC(block_timestamp, DAY) >= TIMESTAMP('{from_date}')
-            AND TIMESTAMP_TRUNC(block_timestamp, DAY) <= TIMESTAMP('{to_date}')
-        ),
-        transfers_internal AS (
+          transfers_fusion AS (
           SELECT
             transaction_hash as txn_hash,
             block_hash,
-            2 AS transfer_type,
+            CASE 
+              WHEN trace_address is null then 1 -- normal/external transaction
+              ELSE 2                            -- internal transaction
+            END AS transfer_type,
             0 as ref_index,
             block_number,
             UNIX_SECONDS(block_timestamp) as txn_ts,
@@ -96,7 +78,7 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
             from_address,
             to_address,
             "0" as token_id,
-            CAST(value as BIGNUMERIC)/POW(10, 6) as quantity,
+            value as quantity,
             "0x0000000000000000000000000000000000000000" AS operator_address,
             GENERATE_UUID() AS id
           FROM
@@ -107,12 +89,13 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
             AND to_address IS NOT NULL
             AND value > 0
             AND TIMESTAMP_TRUNC(block_timestamp, DAY) >= TIMESTAMP('{from_date}')
-            AND TIMESTAMP_TRUNC(block_timestamp, DAY) <= TIMESTAMP('{to_date}')
+                    AND TIMESTAMP_TRUNC(block_timestamp, DAY) <= TIMESTAMP('{to_date}')
         ),
-        transfers_withdrawal as (SELECT
+
+          transfers_withdrawal as (SELECT
             CAST(w.index AS STRING) as txn_hash,
             `hash`,
-            3 AS transfer_type, -- Native withdrawal
+            3 AS transfer_type, -- native withdrawal
             w.index as ref_index,
             number,
             UNIX_SECONDS(timestamp) as txn_ts,
@@ -120,7 +103,7 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
             "0x0000000000000000000000000000000000000000" as from_address,
             w.address,
             "0" as token_id,
-            CAST(w.amount AS BIGNUMERIC)/POW(10, 6) as quantity,
+            CAST(w.amount AS BIGNUMERIC) as quantity,
             "0x0000000000000000000000000000000000000000" AS operator_address,
             GENERATE_UUID() AS id
           FROM
@@ -128,7 +111,9 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
             CROSS JOIN UNNEST(withdrawals) AS w
           WHERE TIMESTAMP_TRUNC(timestamp, DAY) >= TIMESTAMP('{from_date}')
             AND TIMESTAMP_TRUNC(timestamp, DAY) <= TIMESTAMP('{to_date}')
-        )
+          )
+          
+
         SELECT
           *
         FROM
@@ -137,12 +122,7 @@ def execute_demo_pipeline(pipeline, from_date, to_date, migrate_balance='false')
         SELECT
           *
         FROM
-          transfers_external
-        UNION ALL
-        SELECT
-          *
-        FROM
-          transfers_internal
+          transfers_fusion
         UNION ALL
         SELECT
           *

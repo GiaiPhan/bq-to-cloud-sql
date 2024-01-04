@@ -55,23 +55,23 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
         start = timer()
         if data.get(CLOUDSQL_TABLE_NAME, "") != "":
             if data.get(CLOUDSQL_TABLE_NAME, "") == "all_transfers":
-                delete_from_mysql(
-                    delete_query=data.get("delete_query"),
-                    from_date=data.get("from_date"),
-                    to_date=data.get("to_date")
-                )
+                # delete_from_mysql(
+                #     delete_query=data.get("delete_query"),
+                #     from_date=data.get("from_date"),
+                #     to_date=data.get("to_date")
+                # )
                 load_from_bigquery_to_cloudsql(
                     query_string=data.get(QUERY_STRING, ""),
                     cloudsql_table_name=data.get(CLOUDSQL_TABLE_NAME, "")
                 )
             else:
                 migration_balances = True
-                try:
-                    truncate_mysql_table(
-                        cloudsql_table_name=data.get(CLOUDSQL_TABLE_NAME, "")
-                    )
-                except Exception as e:
-                    migration_balances = False
+                # try:
+                #     truncate_mysql_table(
+                #         cloudsql_table_name=data.get(CLOUDSQL_TABLE_NAME, "")
+                #     )
+                # except Exception as e:
+                #     migration_balances = False
                 
                 if migration_balances:
                     load_from_bigquery_to_cloudsql(
