@@ -7,3 +7,5 @@ pandas-gbq==0.17.0
 mysql-connector-python==8.0.*
 google-cloud-bigquery==2.34.4
 google-api-python-client==2.101.0
+google-cloud-logging==3.6.0
+google-cloud-secret-manager==2.16.3

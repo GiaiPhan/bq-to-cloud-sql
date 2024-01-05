@@ -2,8 +2,8 @@ from sqlalchemy import create_engine
 
 
 class MySQL:
-    def __init__(self, host="10.98.32.3", user="userdemo", 
-                 password="m9{f]3o&$IG7kRYh", database="spotonchain_demo"):
+    def __init__(self, host="localhost", user="user", 
+                 password="password", database="database"):
         self.db = create_engine('mysql+mysqlconnector://{user}:{password}@{host}/{database}'.format(
             host=host, user=user,
             password=password, database=database

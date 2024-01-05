@@ -33,13 +33,9 @@ if __name__ == "__main__":
         setup_file='/dataflow/template/setup.py'
     )
 
-    pipeline = beam.Pipeline(options=options)
-
     execute_demo_pipeline(
-        pipeline=pipeline,
+        options=options,
         from_date=from_date,
         to_date=to_date,
         migrate_balance=migrate_balance
     )
-
-    pipeline.run()
