@@ -6,4 +6,4 @@ steps:
           - "-c"
           - |
               set -x && \
-              gcloud compute ssh airflow-instance --zone=asia-southeast1-a --command='/bin/sh pull.sh'
+              gcloud compute ssh airflow-instance --zone=us-east5-a --command='/bin/sh pull.sh'

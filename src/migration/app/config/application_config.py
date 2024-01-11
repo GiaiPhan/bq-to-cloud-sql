@@ -1,6 +1,6 @@
 # application config
 PROJECT_ID = "int-data-ct-spotonchain"
-SING_LOCATION = "asia-southeast1"
+COLOMBUS_LOCATION = "us-east5"
 US_LOCATION = "US"
 
 DATASET_INPUT = "bigquery-public-data"
