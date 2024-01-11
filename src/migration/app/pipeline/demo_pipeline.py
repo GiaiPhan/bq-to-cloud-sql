@@ -244,14 +244,14 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
       )
 
     
-    log_task_success(
-        payload={
-            "message": f"Successful of the pipeline to ingest data from BigQuery to Cloud SQL with from_date {from_date} and to_date {to_date}",
-            "detail": {
-                "from_date": from_date,
-                "to_date": to_date,
-                "migrate_balance": migrate_balance,
-            }
-        },
-        start_time=start
-    )
+    # log_task_success(
+    #     payload={
+    #         "message": f"Successful of the pipeline to ingest data from BigQuery to Cloud SQL with from_date {from_date} and to_date {to_date}",
+    #         "detail": {
+    #             "from_date": from_date,
+    #             "to_date": to_date,
+    #             "migrate_balance": migrate_balance,
+    #         }
+    #     },
+    #     start_time=start
+    # )

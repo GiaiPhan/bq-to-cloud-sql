@@ -63,11 +63,11 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
                             table_name=cloudsql_table_name,
                             chunk_size=CHUNK_SIZE
                         )
-                        chunk_sum += chunk.size
+                        chunk_sum += len(chunk)
                     except Exception as e:
                         log_task_failure(
                             payload={
-                                "message": f"Failed to load {chunk.size} rows into table {cloudsql_table_name} CloudSQL",
+                                "message": f"Failed to load {len(chunk)} rows with {chunk.size} columns into table {cloudsql_table_name} CloudSQL",
                                 "chunk_index": idx,
                                 "total_row_loaded": str(chunk_sum),
                                 "detail": {
@@ -85,7 +85,7 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
                     
                     log_task_success(
                         payload={
-                            "message": f"Loaded {chunk.size} rows into table {cloudsql_table_name} CloudSQL",
+                            "message": f"Loaded {len(chunk)} rows with {chunk.size} columns into table {cloudsql_table_name} CloudSQL",
                             "chunk_index": idx,
                             "total_row_loaded": str(chunk_sum),
                             "detail": {
