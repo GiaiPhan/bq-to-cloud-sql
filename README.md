@@ -14,7 +14,7 @@ After installation, update gcloud to the latest version.
 
 Configure the gcloud SDK to match project working on
 ```
-gcloud config set project <PROJECT_ID>
+gcloud config set project internal-blockchain-indexed
 gcloud config set compute/region us-east5
 ```
 
@@ -38,8 +38,8 @@ gcloud services enable sqladmin.googleapis.com
 **4: Set up environment variables**
 
 ```
-export PROJECT_ID=<PROJECT_ID>
-export PROJECT_NUMBER=<PROJECT_NUMBER>
+export PROJECT_ID=internal-blockchain-indexed
+export PROJECT_NUMBER=845003122689
 export REGION=us-east5
 ```
 
@@ -82,7 +82,7 @@ gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:${PR
 
 
 **2: Grant permissions to Airflow instance?**
-[Create](https://cloud.google.com/iam/docs/service-accounts-create) and grant service account (the service account should be like this <SERVICE_ACCOUNT_ID>@<PROJECT_ID>.iam.gserviceaccount.com). Run the following command once for each of the following IAM roles:
+[Create](https://cloud.google.com/iam/docs/service-accounts-create) and grant service account (the service account should be like this <SERVICE_ACCOUNT_ID>@internal-blockchain-indexed.iam.gserviceaccount.com). Run the following command once for each of the following IAM roles:
 - roles/dataflow.developer
 - roles/dataflow.worker
 - roles/iam.serviceAccountUser
@@ -100,13 +100,13 @@ gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:${PR
 Upload the downloaded credentials to Airflow Admin Configurations with [default credentials named google_cloud_default](https://airflow.apache.org/docs/apache-airflow-providers-google/stable/connections/gcp.html#default-connection-ids).
 
 
-
-
 # Deployment action
 
 ## Create Dataflow Flex Template
 
 Dataflow Flex Templates allow you to package a Dataflow pipeline for deployment. This tutorial shows you how to build a Dataflow Flex Template and then run a Dataflow job using that template. Please follow this [link](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates#local-shell). Below is some main step to create the Dataflow Flex Template.
+
+**1: Create GCS Bucket and Artifact Registry**
 
 Prepare environment variables
 ```
@@ -133,6 +133,8 @@ Authenticate to Artifact repository
 gcloud auth configure-docker ${REGION}-docker.pkg.dev
 ```
 
+**2: Create Dataflow Flex Template definition**
+
 Build flex template, remember the following srcipts is in `src/migration/app/config/metadata` on this source and remember to modify the file `build-template.sh` with proper project. The file `demo-pipeline-metadata.json` is used to define the metadata of current Dataflow Template like pipeline name or passing parameters.
 ```
 # This is an example of the scripts to build flex template
@@ -143,7 +145,63 @@ gcloud dataflow flex-template build \
     --metadata-file "demo-pipeline-metadata.json"
 ```
 
+**3: Create Container Image to run source code**
+
 Build the Dataflow image using the Cloud Build Yaml definitions in `src/migration/pipeline-template.cloudbuild.yaml`. We can use the script is on `src/migration/build-pipeline-template.sh` but remember to modify the information in `pipeline-template.cloudbuild.yaml` to match your project and repository used above in flex template
 ```
 gcloud builds submit --config=pipeline-template.cloudbuild.yaml
+```
+
+**Now the Dataflow flex template is ready to use.**
+
+
+## Airflow deployment
+
+**1: Create VM instance on Compute Engine**
+
+Remember to match the project with Dataflow deployment above.
+[Create the VM](https://cloud.google.com/compute/docs/instances/create-start-instance) with the following configurations.
+- Name: `airflow-instance`.
+- Instance Type: `n2-standard-4`.
+- Boot disk: `debian-11-bullseye-v20231212 (SSD 100 GB)`.
+- Allow HTTP traffic.
+- Set access for each API: keep as default.
+
+
+
+**2: SSH to Compute Engine and install docker**
+
+SSH with the following command or using Google Cloud Console. Remember the region is us-east5.
+```
+gcloud compute ssh airflow-instance
+```
+
+Install docker follow the [link](https://docs.docker.com/engine/install/debian/)
+
+
+**3: SSH to Compute Engine and install docker**
+
+Use the `docker-compose-yaml` file to deploy airflow
+```
+sudo docker compose up -d
+```
+
+Wait all the docker container is ready. Using the follow command to check docker container.
+```
+sudo docker ps
+```
+
+**4: Configure firewall to access the Airflow UI**
+
+Access to the Firewall on Google Cloud Console or using the following command. Remember to change the network to match.
+```
+export NETWORK=default
+
+gcloud compute firewall-rules create allow-airflow-and-db \
+       --network $NETWORK \
+       --priority 1000 \
+       --direction=INGRESS \
+       --allow=tcp:8080 \
+       --source-ranges 0.0.0.0/0 \       
+       --description="Allow incoming traffic on TCP port 8080" 
 ```

@@ -1,5 +1,5 @@
 # config
-PROJECT_ID = "int-data-ct-spotonchain"
+PROJECT_ID = "internal-blockchain-indexed"
 
 # migration profile
 QUERY_STRING = "query_string"
