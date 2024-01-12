@@ -60,7 +60,9 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
                 # "ipConfiguration": "WORKER_IP_PRIVATE",
                 "machineType": self.dataflow_config["machine_type"] if "machine_type" in self.dataflow_config.keys() else "n1-standard-2",
                 "numWorkers": 2,
-                "maxWorkers": 4
+                "maxWorkers": 4,
+                "network": "blockchain-indexed-vpc",
+                "subnetwork": "https://www.googleapis.com/compute/v1/projects/internal-blockchain-indexed/regions/us-east5/subnetworks/blockchain-indexed-subnet"
             },
             "parameters": {
                 "from_date": context["params"]["from_date"],
