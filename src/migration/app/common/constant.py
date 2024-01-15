@@ -4,6 +4,7 @@ PROJECT_ID = "internal-blockchain-indexed"
 # migration profile
 QUERY_STRING = "query_string"
 CLOUDSQL_TABLE_NAME = "cloudsql_table_name"
+CLOUDSQL_CONNECTION = "mysql_connection"
 
 # datetime
 TIMEZONE = "Asia/Ho_Chi_Minh"

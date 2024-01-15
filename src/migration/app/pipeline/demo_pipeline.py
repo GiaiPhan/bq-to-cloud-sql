@@ -1,17 +1,19 @@
 import apache_beam as beam
 from app.model.migration_model import MigrationProfileModel
 from app.pipeline.demo_pipeline_task import LoadFromBigQueryToCloudSQL
+from app.config.application_config import PROJECT_ID
+
 import pandas as pd
 from datetime import timedelta, datetime
-from app.common.constant import (
-    TIMEZONE, YYYY_MM_DD_HH_MM_SS_FF_FORMAT,
-)
+
 from app.common.utils.date_utils import get_current_local_datetime
 from app.common.cloudlogging import log_task_failure, log_task_success
 
-
-
-
+from app.common.gcpsecretmanager import get_secret, secret_to_json
+from app.common.constant import (
+    TIMEZONE, YYYY_MM_DD_HH_MM_SS_FF_FORMAT,
+    SECRET_DETAIL, SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG, SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG_VERSION_ID
+)
 
 def convert_to_beam_profiles(migration_list):
     """
@@ -36,7 +38,8 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
 
     balance_query_string = """SELECT * FROM `bigquery-public-data.crypto_ethereum.balances`"""
     all_transfers_query_string = """
-        SELECT * FROM `internal-blockchain-indexed.ethereum.all_transfers`
+        SELECT * EXCEPT(id) 
+        FROM `internal-blockchain-indexed.ethereum.all_transfers`
         WHERE txn_ts >= UNIX_SECONDS("{from_date}")
           AND txn_ts < UNIX_SECONDS("{to_date}")
     """
@@ -56,6 +59,65 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
     )
 
 
+
+    log_task_success(
+        payload={
+            "message": f"Getting secret information of MySQL connection",
+            "detail": {
+                "project_id": PROJECT_ID,
+                "secret_name": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG,
+                "secret_version": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG_VERSION_ID,
+            }
+        },
+        start_time=start
+    )
+    try:
+        secret_uri = SECRET_DETAIL.format(
+            PROJECT_ID,
+            SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG,
+            SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG_VERSION_ID
+        )
+
+        mysql_connection = secret_to_json(
+            secret_payload=get_secret(
+            {
+                "name": secret_uri
+            }
+        )
+        )
+    except Exception as e:
+        log_task_failure(
+            payload={
+                "message": f"Failed to get secret information of MySQL connection from {secret_uri}",
+                "detail": {
+                    "project_id": PROJECT_ID,
+                    "secret_name": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG,
+                    "secret_version": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG_VERSION_ID,
+                    "error_message": str(e)
+                }
+            }
+        )
+
+        raise e
+
+
+
+    log_task_success(
+        payload={
+            "message": f"Successful to get secret information of MySQL connection from {secret_uri}",
+            "detail": {
+                "project_id": PROJECT_ID,
+                "secret_name": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG,
+                "secret_version": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG_VERSION_ID,
+                "host": mysql_connection["host"],
+                "user": mysql_connection["user"],
+                "password": ("*****" + mysql_connection["user"][5:]),
+                "database": mysql_connection["database"]
+            }
+        },
+        start_time=start
+    )
+
     try:
       start_date = from_date
 
@@ -68,7 +130,8 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
             cloudsql_table_name=all_transfers_cloudsql_table_name,
             delete_query=delete_query,
             from_date=start_date,
-            to_date=_single_date.strftime("%Y-%m-%d")
+            to_date=_single_date.strftime("%Y-%m-%d"),
+            mysql_connection=mysql_connection
         )
 
         migration_list.append(all_transfers_migration_profile)
@@ -93,7 +156,8 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
           cloudsql_table_name=balance_cloudsql_table_name,
           delete_query=delete_query,
           from_date=from_date,
-          to_date=to_date
+          to_date=to_date,
+          mysql_connection=mysql_connection
       )
       if migrate_balance == 'true':
         migration_list.append(balance_migration_profile)
@@ -105,7 +169,6 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
           payload={
               "message": f"Failed to build migration profiles",
               "detail": {
-                  "migration_profiles": beam_profiles,
                   "from_date": from_date,
                   "to_date": to_date,
                   "migrate_balance": migrate_balance,
@@ -138,8 +201,7 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
             "detail": {
                 "from_date": from_date,
                 "to_date": to_date,
-                "migrate_balance": migrate_balance,
-                "beam_profiles": beam_profiles
+                "migrate_balance": migrate_balance
             }
         },
         start_time=start

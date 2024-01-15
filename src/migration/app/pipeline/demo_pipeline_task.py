@@ -1,10 +1,9 @@
 import apache_beam as beam
 from app.database.mysql.mysql_connector import MySQL
 from app.database.bigquery.bigquery_connector import BigQuery
-from app.common.gcpsecretmanager import get_secret, secret_to_json
 from app.config.application_config import US_LOCATION, PROJECT_ID, CHUNK_SIZE
 from app.common.constant import (
-    QUERY_STRING, CLOUDSQL_TABLE_NAME,
+    QUERY_STRING, CLOUDSQL_TABLE_NAME, CLOUDSQL_CONNECTION,
     TIMEZONE, YYYY_MM_DD_HH_MM_SS_FF_FORMAT,
     SECRET_DETAIL, SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG, SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG_VERSION_ID
 )
@@ -137,51 +136,13 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
             datetime_format=YYYY_MM_DD_HH_MM_SS_FF_FORMAT
         )
 
-        log_task_success(
-            payload={
-                "message": f"Getting secret information of MySQL connection",
-                "detail": {
-                    "project_id": PROJECT_ID,
-                    "secret_name": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG,
-                    "secret_version": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG_VERSION_ID,
-                }
-            },
-            start_time=start
-        )
-        try:
-            secret_uri = SECRET_DETAIL.format(
-                PROJECT_ID,
-                SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG,
-                SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG_VERSION_ID
-            )
-
-            mysql_connection = secret_to_json(
-                secret_payload=get_secret(
-                {
-                    "name": secret_uri
-                }
-            )
-            )
-        except Exception as e:
-            log_task_failure(
-                payload={
-                    "message": f"Failed to get secret information of MySQL connection from {secret_uri}",
-                    "detail": {
-                        "project_id": PROJECT_ID,
-                        "secret_name": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG,
-                        "secret_version": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG_VERSION_ID,
-                        "error_message": str(e)
-                    }
-                }
-            )
-
-            raise e
 
         try:
             from_date = data.get("from_date", "")
             to_date = data.get("to_date", "")
             query_string = data.get(QUERY_STRING, "")
             cloudsql_table_name = data.get(CLOUDSQL_TABLE_NAME, "")
+            mysql_connection = data.get(CLOUDSQL_CONNECTION, None)
 
             if not from_date or not to_date or not query_string or not cloudsql_table_name:
                 log_task_failure(
@@ -232,28 +193,6 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
             )
 
             raise e
-
-
-        log_task_success(
-            payload={
-                "message": f"Successful to get secret information of MySQL connection from {secret_uri}",
-                "detail": {
-                    "project_id": PROJECT_ID,
-                    "secret_name": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG,
-                    "secret_version": SECRET_BQ_TO_SQL_PIPELINE_EXECUTION_CONFIG_VERSION_ID,
-                    "host": mysql_connection["host"],
-                    "user": mysql_connection["user"],
-                    "password": ("*****" + mysql_connection["user"][5:]),
-                    "database": mysql_connection["database"]
-                }
-            },
-            start_time=start
-        )
-
-        start = get_current_local_datetime(
-            timezone=TIMEZONE,
-            datetime_format=YYYY_MM_DD_HH_MM_SS_FF_FORMAT
-        )
 
         log_task_success(
             payload={
