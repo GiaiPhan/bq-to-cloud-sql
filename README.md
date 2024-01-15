@@ -88,11 +88,14 @@ gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:${PR
 - roles/iam.serviceAccountUser
 
 ```
-gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" --role=roles/dataflow.developer
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="airflow-instance-e5bdbbc7@internal-blockchain-indexed.iam.gserviceaccount.com
+" --role=roles/dataflow.developer
 
-gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" --role=roles/dataflow.worker
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="airflow-instance-e5bdbbc7@internal-blockchain-indexed.iam.gserviceaccount.com
+" --role=roles/dataflow.worker
 
-gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" --role=roles/iam.serviceAccountUser
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="airflow-instance-e5bdbbc7@internal-blockchain-indexed.iam.gserviceaccount.com
+" --role=roles/iam.serviceAccountUser
 ```
 
 [Create service account key to authenticate for dataflow](https://cloud.google.com/iam/docs/keys-create-delete).
@@ -195,7 +198,7 @@ sudo docker ps
 
 Access to the Firewall on Google Cloud Console or using the following command. Remember to change the network to match.
 ```
-export NETWORK=default
+export NETWORK=blockchain-indexed-vpc
 
 gcloud compute firewall-rules create allow-airflow-and-db \
        --network $NETWORK \

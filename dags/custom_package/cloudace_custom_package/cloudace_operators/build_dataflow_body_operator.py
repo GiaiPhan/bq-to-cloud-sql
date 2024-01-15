@@ -62,7 +62,7 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
                 "numWorkers": 2,
                 "maxWorkers": 4,
                 "network": "blockchain-indexed-vpc",
-                "subnetwork": "https://www.googleapis.com/compute/v1/projects/internal-blockchain-indexed/regions/us-east5/subnetworks/blockchain-indexed-subnet"
+                "subnetwork": "https://www.googleapis.com/compute/v1/projects/internal-blockchain-indexed/regions/us-east5/subnetworks/blockchain-indexed-subnet",
             },
             "parameters": {
                 "from_date": context["params"]["from_date"],

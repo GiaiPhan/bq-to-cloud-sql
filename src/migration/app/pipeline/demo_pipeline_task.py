@@ -42,14 +42,27 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
             bq_object = BigQuery()
             bq_connection = bq_object.get_connection(US_LOCATION, PROJECT_ID)
 
-            cloudsql_object = MySQL(
-                host=mysql_connection["host"],
-                user=mysql_connection["user"],
-                password=mysql_connection["password"],
-                database=mysql_connection["database"],
-            )
-            chunk_sum = 0
+            try:
+                cloudsql_object = MySQL(
+                    host=mysql_connection["host"],
+                    user=mysql_connection["user"],
+                    password=mysql_connection["password"],
+                    database=mysql_connection["database"],
+                )
+            except Exception as e:
+                log_task_failure(
+                    payload={
+                        "message": f"Failed to create MySQL connection",
+                        "detail": {
+                            "error_message": str(e)
+                        }
+                    }
+                )
 
+                raise e
+
+            chunk_sum = 0
+            
             try:
                 for idx, chunk in enumerate(pd.read_sql(sql=query_string, con=bq_connection, chunksize=CHUNK_SIZE)):
                     start = get_current_local_datetime(
@@ -67,7 +80,7 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
                     except Exception as e:
                         log_task_failure(
                             payload={
-                                "message": f"Failed to load {len(chunk)} rows with {chunk.size} columns into table {cloudsql_table_name} CloudSQL",
+                                "message": f"Failed to load {len(chunk)} rows into table {cloudsql_table_name} CloudSQL",
                                 "chunk_index": idx,
                                 "total_row_loaded": str(chunk_sum),
                                 "detail": {
@@ -85,7 +98,7 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
                     
                     log_task_success(
                         payload={
-                            "message": f"Loaded {len(chunk)} rows with {chunk.size} columns into table {cloudsql_table_name} CloudSQL",
+                            "message": f"Loaded {len(chunk)} rows into table {cloudsql_table_name} CloudSQL",
                             "chunk_index": idx,
                             "total_row_loaded": str(chunk_sum),
                             "detail": {
@@ -257,37 +270,38 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
         )
 
         try:
-            if cloudsql_table_name != "":
-                if cloudsql_table_name == "all_transfers":
-                    # delete_from_mysql(
-                    #     delete_query=data.get("delete_query"),
-                    #     from_date=data.get("from_date"),
-                    #     to_date=data.get("to_date")
-                    # )
-                    load_from_bigquery_to_cloudsql(
-                        mysql_connection=mysql_connection,
-                        query_string=query_string,
-                        cloudsql_table_name=cloudsql_table_name,
-                        from_date=from_date,
-                        to_date=to_date
-                    )
-                else:
-                    migration_balances = True
-                    # try:
-                    #     truncate_mysql_table(
-                    #         cloudsql_table_name=cloudsql_table_name
-                    #     )
-                    # except Exception as e:
-                    #     migration_balances = False
+            load_from_bigquery_to_cloudsql(
+                mysql_connection=mysql_connection,
+                query_string=query_string,
+                cloudsql_table_name=cloudsql_table_name,
+                from_date=from_date,
+                to_date=to_date
+            )
+            # if cloudsql_table_name != "":
+            #     if cloudsql_table_name != "balances":
+            #         # delete_from_mysql(
+            #         #     delete_query=data.get("delete_query"),
+            #         #     from_date=data.get("from_date"),
+            #         #     to_date=data.get("to_date")
+            #         # )
+
+            #     else:
+            #         migration_balances = True
+            #         # try:
+            #         #     truncate_mysql_table(
+            #         #         cloudsql_table_name=cloudsql_table_name
+            #         #     )
+            #         # except Exception as e:
+            #         #     migration_balances = False
                     
-                    if migration_balances:
-                        load_from_bigquery_to_cloudsql(
-                            mysql_connection=mysql_connection,
-                            query_string=query_string,
-                            cloudsql_table_name=cloudsql_table_name,
-                            from_date=from_date,
-                            to_date=to_date
-                        )
+            #         if migration_balances:
+            #             load_from_bigquery_to_cloudsql(
+            #                 mysql_connection=mysql_connection,
+            #                 query_string=query_string,
+            #                 cloudsql_table_name=cloudsql_table_name,
+            #                 from_date=from_date,
+            #                 to_date=to_date
+            #             )
         except Exception as e:
             log_task_failure(
                 payload={

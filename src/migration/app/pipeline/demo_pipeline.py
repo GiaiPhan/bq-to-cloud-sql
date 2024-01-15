@@ -2,7 +2,7 @@ import apache_beam as beam
 from app.model.migration_model import MigrationProfileModel
 from app.pipeline.demo_pipeline_task import LoadFromBigQueryToCloudSQL
 import pandas as pd
-from datetime import timedelta
+from datetime import timedelta, datetime
 from app.common.constant import (
     TIMEZONE, YYYY_MM_DD_HH_MM_SS_FF_FORMAT,
 )
@@ -37,6 +37,8 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
     balance_query_string = """SELECT * FROM `bigquery-public-data.crypto_ethereum.balances`"""
     all_transfers_query_string = """
         SELECT * FROM `internal-blockchain-indexed.ethereum.all_transfers`
+        WHERE txn_ts >= UNIX_SECONDS("{from_date}")
+          AND txn_ts < UNIX_SECONDS("{to_date}")
     """
 
     delete_query = """
@@ -61,18 +63,28 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
         all_transfers_migration_profile = MigrationProfileModel(
             query_string=all_transfers_query_string.format(
               from_date=start_date,
-              to_date=_single_date.strftime("%Y-%m-%d")
+              to_date=(_single_date + timedelta(days=1)).strftime("%Y-%m-%d")
             ),
             cloudsql_table_name=all_transfers_cloudsql_table_name,
             delete_query=delete_query,
             from_date=start_date,
             to_date=_single_date.strftime("%Y-%m-%d")
         )
-        
+
         migration_list.append(all_transfers_migration_profile)
 
         start_date = (_single_date + timedelta(days=1)).strftime("%Y-%m-%d")
 
+        log_task_success(
+            payload={
+                "message": f"Successful to build BigQuery query profiles from {from_date} to {to_date}",
+                "detail": {
+                    "from_date": from_date,
+                    "to_date": to_date
+                }
+            },
+            start_time=start
+        )
         if _single_date == to_date:
           break
 
@@ -127,6 +139,7 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
                 "from_date": from_date,
                 "to_date": to_date,
                 "migrate_balance": migrate_balance,
+                "beam_profiles": beam_profiles
             }
         },
         start_time=start
