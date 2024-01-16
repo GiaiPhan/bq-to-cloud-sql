@@ -12,11 +12,11 @@ from airflow.decorators import dag, task
 from airflow.operators.empty import EmptyOperator
 from airflow.providers.google.cloud.operators.dataflow import DataflowStartFlexTemplateOperator
 
-from dags.custom_package.cloudace_custom_package.cloudace_operators.build_dataflow_body_operator import CloudAceBuildDataflowBodyOperator
+from custom_package.cloudace_custom_package.cloudace_operators.build_dataflow_body_operator import CloudAceBuildDataflowBodyOperator
 
-# from dags.utils.email import _send_successful_email_notification
-# from dags.utils.ca_utils import MySQL, BigQuery
-from dags.utils.config_utils import CloudAceConfigUtilsYaml
+# from utils.email import _send_successful_email_notification
+# from utils.ca_utils import MySQL, BigQuery
+from utils.config_utils import CloudAceConfigUtilsYaml
 
 # import pandas as pd
 

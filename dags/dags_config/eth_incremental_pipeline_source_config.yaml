@@ -3,16 +3,16 @@ project_id: internal-blockchain-indexed
 location: us-east5
 default_args:
     timezone: Asia/Ho_Chi_Minh
-    owner: tu.phan@cloud-ace.com
+    owner: giaiphan@cloud-ace.com
     retries: 0
     retry_delay_sec: 60
-    email: ["tu.phan@cloud-ace.com"]
-    email_on_failure: False
-    email_on_retry: False
-start_date: "2023-10-12"
-schedule_interval: "0 16 * * 1"
-tags: ["manual"]
-timeout: 12
+    email: ["giaiphan@cloud-ace.com"]
+    email_on_failure: True
+    email_on_retry: True
+start_date: "2024-01-16"
+schedule_interval: "0 * * * *"
+tags: ["automation"]
+timeout: 1
 
 # 2. Connections & services used in the pipeline
 gcp_conn_id: "google_cloud_default"
@@ -20,7 +20,7 @@ gcp_conn_id: "google_cloud_default"
 # 3. Trigger migration dataflow pipeline
 dataflow_pipeline:
     ## Configuration for template, network and staging location of Dataflow job
-    template_path: gs://internal-blockchain-indexed-dataflow-template/demo-pipeline-template.json
-    temp_location: gs://dataflow-staging-us-east5-267252521832
+    template_path: gs://bq-to-cloud-sql-template/incremental-pipeline-template.json
+    temp_location: gs://dataflow-staging-us-east5-845003122689
     # staging_location: gs://dataflow-staging-us-east5-267252521832/staging
     machine_type: n2-standard-2

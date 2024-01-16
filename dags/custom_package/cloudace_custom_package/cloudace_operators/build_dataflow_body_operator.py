@@ -1,6 +1,7 @@
 from typing import Sequence
 from airflow.models import BaseOperator
 from airflow.utils.context import Context
+from utils.parse_time import get_run_time_params
 
 
 class CloudAceBuildDataflowBodyOperator(BaseOperator):
@@ -52,6 +53,20 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
 
         dataflow_body = dict()
 
+        if context["dag"].tags[0] == "automation":
+            from_time, to_time = get_run_time_params(context["params"]["interval"])
+            parameters = {
+                "from_time": from_time,
+                "to_time": to_time
+            }
+        elif context["dag"].tags[0] == "manual":
+            parameters = {
+                "from_date": context["params"]["from_date"],
+                "to_date": context["params"]["to_date"]
+            }
+        else:
+            parameters = {}
+
         dataflow_body["launchParameter"] = {
             "jobName": f"{self.job_name_prefix}-{ds_nodash}",
             "containerSpecGcsPath": self.dataflow_config['template_path'],
@@ -64,12 +79,8 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
                 "network": "blockchain-indexed-vpc",
                 "subnetwork": "https://www.googleapis.com/compute/v1/projects/internal-blockchain-indexed/regions/us-east5/subnetworks/blockchain-indexed-subnet",
             },
-            "parameters": {
-                "from_date": context["params"]["from_date"],
-                "to_date": context["params"]["to_date"],
-                "migrate_balance": context["params"]["migrate_balance"]
-            }
+            "parameters": parameters
         }
-        
 
         return dataflow_body
+    
