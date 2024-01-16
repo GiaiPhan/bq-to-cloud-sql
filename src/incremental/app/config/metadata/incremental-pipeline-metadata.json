@@ -3,19 +3,14 @@
   "description": "SpotOnChain Demo BigQuery to Cloud SQL",
   "parameters":[
     {
-      "name": "from_date",
-      "label": "From date",
-      "helpText": "From date"
+      "name": "from_time",
+      "label": "From time",
+      "helpText": "From time"
     },
     {
-      "name": "to_date",
-      "label": "To date",
-      "helpText": "To date"
-    },
-    {
-      "name": "migrate_balance",
-      "label": "Migration balance or not",
-      "helpText": "Migration balance or not"
+      "name": "to_time",
+      "label": "To time",
+      "helpText": "To time"
     }
   ]
 }

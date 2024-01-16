@@ -10,6 +10,7 @@ CLOUDSQL_CONNECTION = "mysql_connection"
 # TIMEZONE = "Asia/Ho_Chi_Minh"
 TIMEZONE = "UTC"
 YYYY_MM_DD_HH_MM_SS_FF_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
+FREQUENCY = "30min"
 
 # cloud logging
 INFO_SEVERITY = "INFO"

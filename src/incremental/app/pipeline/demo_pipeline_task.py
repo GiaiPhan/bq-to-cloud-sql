@@ -14,14 +14,14 @@ from app.common.cloudlogging import log_task_failure, log_task_success
 
 class LoadFromBigQueryToCloudSQL(beam.DoFn):
     def process(self, data):
-        # def delete_from_mysql(delete_query, from_date, to_date):
+        # def delete_from_mysql(delete_query, from_time, to_time):
         #     from datetime import datetime, timedelta
 
         #     mysql_object = MySQL()
-        #     date_plus_one = datetime.strptime(to_date, "%Y-%m-%d") + timedelta(days=1)
+        #     date_plus_one = datetime.strptime(to_time, "%Y-%m-%d") + timedelta(days=1)
         #     date_plus_one = date_plus_one.strftime("%Y-%m-%d")
 
-        #     mysql_object.execute(delete_query, (from_date, date_plus_one))
+        #     mysql_object.execute(delete_query, (from_time, date_plus_one))
 
         # def truncate_mysql_table(cloudsql_table_name):
 
@@ -29,7 +29,7 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
         #     mysql_object.truncate(cloudsql_table_name)
 
 
-        def load_from_bigquery_to_cloudsql(mysql_connection, query_string, cloudsql_table_name, from_date, to_date):
+        def load_from_bigquery_to_cloudsql(mysql_connection, query_string, cloudsql_table_name, from_time, to_time):
             """
             function to load data from bigquery into cloudsql
             @param query_string: str.
@@ -84,8 +84,8 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
                                 "total_row_loaded": str(chunk_sum),
                                 "detail": {
                                     "cloudsql_table_name": cloudsql_table_name,
-                                    "from_date": from_date,
-                                    "to_date": to_date,
+                                    "from_time": from_time,
+                                    "to_time": to_time,
                                     "bq_query_string": query_string,
                                     "chunksize": CHUNK_SIZE,
                                     "error_message": str(e)
@@ -102,8 +102,8 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
                             "total_row_loaded": str(chunk_sum),
                             "detail": {
                                 "cloudsql_table_name": cloudsql_table_name,
-                                "from_date": from_date,
-                                "to_date": to_date,
+                                "from_time": from_time,
+                                "to_time": to_time,
                                 "bq_query_string": query_string,
                                 "chunksize": CHUNK_SIZE,
                             }
@@ -114,13 +114,13 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
             except Exception as e:
                 log_task_failure(
                     payload={
-                        "message": f"Failed to ingest data from BigQuery to Cloud SQL with from_date {from_date} and to_date {to_date}",
+                        "message": f"Failed to ingest data from BigQuery to Cloud SQL with from_time {from_time} and to_time {to_time}",
                         "chunk_index": idx,
                         "total_row_loaded": str(chunk_sum),
                         "detail": {
                             "cloudsql_table_name": cloudsql_table_name,
-                            "from_date": from_date,
-                            "to_date": to_date,
+                            "from_time": from_time,
+                            "to_time": to_time,
                             "bq_query_string": query_string,
                             "chunksize": CHUNK_SIZE,
                             "error_message": str(e)
@@ -138,19 +138,19 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
 
 
         try:
-            from_date = data.get("from_date", "")
-            to_date = data.get("to_date", "")
+            from_time = data.get("from_time", "")
+            to_time = data.get("to_time", "")
             query_string = data.get(QUERY_STRING, "")
             cloudsql_table_name = data.get(CLOUDSQL_TABLE_NAME, "")
             mysql_connection = data.get(CLOUDSQL_CONNECTION, None)
 
-            if not from_date or not to_date or not query_string or not cloudsql_table_name:
+            if not from_time or not to_time or not query_string or not cloudsql_table_name:
                 log_task_failure(
                     payload={
                         "message": "Failed to get parse information of Dataflow Pipline",
                         "detail": {
-                            "from_date": from_date,
-                            "to_date": to_date,
+                            "from_time": from_time,
+                            "to_time": to_time,
                             "query_string": query_string,
                             "cloudsql_table_name": cloudsql_table_name,
                             "error_message": "Failed to get parse information of Dataflow Pipline"
@@ -161,13 +161,13 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
                 raise Exception("Failed to get parse information of Dataflow Pipline")
             
 
-            if from_date == "" or to_date == "" or query_string == "" or cloudsql_table_name == "":
+            if from_time == "" or to_time == "" or query_string == "" or cloudsql_table_name == "":
                 log_task_failure(
                     payload={
                         "message": "Invalid parameters of Dataflow Pipeline",
                         "detail": {
-                            "from_date": from_date,
-                            "to_date": to_date,
+                            "from_time": from_time,
+                            "to_time": to_time,
                             "query_string": query_string,
                             "cloudsql_table_name": cloudsql_table_name,
                             "error_message": "Invalid parameters of Dataflow Pipeline"
@@ -183,8 +183,8 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
                 payload={
                     "message": "Failed to get parse information of Dataflow Pipline",
                     "detail": {
-                        "from_date": from_date,
-                        "to_date": to_date,
+                        "from_time": from_time,
+                        "to_time": to_time,
                         "query_string": query_string,
                         "cloudsql_table_name": cloudsql_table_name,
                         "error_message": str(e)
@@ -196,11 +196,11 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
 
         log_task_success(
             payload={
-                "message": f"Beginning to ingest data from BigQuery to Cloud SQL with from_date {from_date} and to_date {to_date}",
+                "message": f"Beginning to ingest data from BigQuery to Cloud SQL with from_time {from_time} and to_time {to_time}",
                 "detail": {
                     "cloudsql_table_name": cloudsql_table_name,
-                    "from_date": from_date,
-                    "to_date": to_date,
+                    "from_time": from_time,
+                    "to_time": to_time,
                     "bq_query_string": query_string,
                     "chunksize": CHUNK_SIZE
                 }
@@ -213,15 +213,15 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
                 mysql_connection=mysql_connection,
                 query_string=query_string,
                 cloudsql_table_name=cloudsql_table_name,
-                from_date=from_date,
-                to_date=to_date
+                from_time=from_time,
+                to_time=to_time
             )
             # if cloudsql_table_name != "":
             #     if cloudsql_table_name != "balances":
             #         # delete_from_mysql(
             #         #     delete_query=data.get("delete_query"),
-            #         #     from_date=data.get("from_date"),
-            #         #     to_date=data.get("to_date")
+            #         #     from_time=data.get("from_time"),
+            #         #     to_time=data.get("to_time")
             #         # )
 
             #     else:
@@ -238,17 +238,17 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
             #                 mysql_connection=mysql_connection,
             #                 query_string=query_string,
             #                 cloudsql_table_name=cloudsql_table_name,
-            #                 from_date=from_date,
-            #                 to_date=to_date
+            #                 from_time=from_time,
+            #                 to_time=to_time
             #             )
         except Exception as e:
             log_task_failure(
                 payload={
-                    "message": f"Failed to ingest data from BigQuery to Cloud SQL with from_date {from_date} and to_date {to_date}",
+                    "message": f"Failed to ingest data from BigQuery to Cloud SQL with from_time {from_time} and to_time {to_time}",
                     "detail": {
                         "cloudsql_table_name": cloudsql_table_name,
-                        "from_date": from_date,
-                        "to_date": to_date,
+                        "from_time": from_time,
+                        "to_time": to_time,
                         "bq_query_string": query_string,
                         "chunksize": CHUNK_SIZE,
                         "error_message": str(e)
@@ -261,11 +261,11 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
 
         log_task_success(
             payload={
-                "message": f"Sucesssful to ingest data from BigQuery to Cloud SQL with from_date {from_date} and to_date {to_date}",
+                "message": f"Sucesssful to ingest data from BigQuery to Cloud SQL with from_time {from_time} and to_time {to_time}",
                 "detail": {
                     "cloudsql_table_name": cloudsql_table_name,
-                    "from_date": from_date,
-                    "to_date": to_date,
+                    "from_time": from_time,
+                    "to_time": to_time,
                     "bq_query_string": query_string,
                     "chunksize": CHUNK_SIZE
                 }
