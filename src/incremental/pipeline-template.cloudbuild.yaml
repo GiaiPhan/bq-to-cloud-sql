@@ -1,0 +1,11 @@
+# Google Cloud Build script for Cloud Teleport
+
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: 
+    - build
+    - --tag=us-east5-docker.pkg.dev/internal-blockchain-indexed/dataflow-container/pipeline-template-incremental-container:latest
+    - --file=./Dockerfile
+    - .
+images:
+- 'us-east5-docker.pkg.dev/internal-blockchain-indexed/dataflow-container/pipeline-template-incremental-container:latest'

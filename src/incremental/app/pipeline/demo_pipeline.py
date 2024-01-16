@@ -38,20 +38,7 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
 
     balance_query_string = """SELECT * FROM `bigquery-public-data.crypto_ethereum.balances`"""
     all_transfers_query_string = """
-        SELECT
-            -- COALESCE(txn_hash, "") txn_hash,
-            -- COALESCE(block_hash, "") block_hash,
-            -- COALESCE(transfer_type, 0) transfer_type,
-            -- COALESCE(ref_index, 0) ref_index,
-            -- COALESCE(block_number, 0) block_number,
-            -- COALESCE(txn_ts, 0) txn_ts,
-            -- COALESCE(contract_address, "") contract_address,
-            -- COALESCE(from_address, "") from_address,
-            -- COALESCE(to_address, "") to_address,
-            -- COALESCE(token_id, "") token_id,
-            -- COALESCE(quantity, 0) quantity,
-            -- COALESCE(operator_address, "") operator_address
-            * EXCEPT(id)
+        SELECT * EXCEPT(id) 
         FROM `internal-blockchain-indexed.ethereum.all_transfers`
         WHERE txn_ts >= UNIX_SECONDS("{from_date}")
           AND txn_ts < UNIX_SECONDS("{to_date}")
