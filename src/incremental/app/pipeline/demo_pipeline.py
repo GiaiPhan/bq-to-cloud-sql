@@ -170,6 +170,8 @@ def execute_demo_pipeline(options, from_time, to_time):
           }
       )
 
+      raise e
+
     log_task_success(
         payload={
             "message": f"Successful to build dataflow pipeline profiles",
