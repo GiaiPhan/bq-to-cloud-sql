@@ -28,7 +28,7 @@ COPY ./setup.py .
 
 RUN python ${FLEX_TEMPLATE_PYTHON_SETUP_FILE} install
 
-ENV FLEX_TEMPLATE_PYTHON_PY_FILE="${WORKDIR}/${FS_SOURCE}/all_transfer_pipeline_template.py"
+ENV FLEX_TEMPLATE_PYTHON_PY_FILE="${WORKDIR}/${FS_SOURCE}/block_pipeline_template.py"
 
 ## Since we already downloaded all the dependencies, there's no need to rebuild everything.
 ENV PIP_NO_DEPS=True

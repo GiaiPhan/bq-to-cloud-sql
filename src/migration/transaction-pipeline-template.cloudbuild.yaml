@@ -5,7 +5,7 @@ steps:
   args: 
     - build
     - --tag=us-east5-docker.pkg.dev/internal-blockchain-indexed/dataflow-container/transaction-pipeline-template-container:latest
-    - --file=./Dockerfile
+    - --file=./Dockerfile.transaction
     - .
 images:
 - 'us-east5-docker.pkg.dev/internal-blockchain-indexed/dataflow-container/transaction-pipeline-template-container:latest'
