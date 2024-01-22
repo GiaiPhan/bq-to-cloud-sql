@@ -1,0 +1,1 @@
+gcloud builds submit --config=cloud_build_base.yaml

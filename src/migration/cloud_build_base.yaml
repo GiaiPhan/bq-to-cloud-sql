@@ -1,0 +1,14 @@
+# Google Cloud Build script for Cloud Teleport
+
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    - build
+    - --tag=us-east5-docker.pkg.dev/internal-blockchain-indexed/dataflow-container/pipeline-base-comp:latest
+    - --file=./Dockerfile.base
+    - .
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+images:
+- 'us-east5-docker.pkg.dev/internal-blockchain-indexed/dataflow-container/pipeline-base-comp:latest'

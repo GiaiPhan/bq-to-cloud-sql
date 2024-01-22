@@ -17,7 +17,6 @@ if __name__ == "__main__":
 
     from_date = known_args.from_date
     to_date = known_args.to_date
-    migrate_balance = known_args.migrate_balance
 
     # build pipeline option
     options = PipelineOptions(
