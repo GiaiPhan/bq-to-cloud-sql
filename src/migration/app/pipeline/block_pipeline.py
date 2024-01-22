@@ -1,6 +1,6 @@
 import apache_beam as beam
 from app.model.migration_model import MigrationProfileModel
-from app.pipeline.demo_pipeline_task import LoadFromBigQueryToCloudSQL
+from migration.app.pipeline.pipeline_task import LoadFromBigQueryToCloudSQL
 from app.config.application_config import PROJECT_ID
 
 import pandas as pd
@@ -28,7 +28,7 @@ def convert_to_beam_profiles(migration_list):
     return result
 
 
-def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
+def execute_demo_pipeline(options, from_date, to_date):
     """
     function to execute pipeline
     @param pipeline: obj.
@@ -36,35 +36,20 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
     """
     migration_list = list()
 
-    balance_query_string = """SELECT * FROM `bigquery-public-data.crypto_ethereum.balances`"""
-    all_transfers_query_string = """
-        SELECT
-            -- COALESCE(txn_hash, "") txn_hash,
-            -- COALESCE(block_hash, "") block_hash,
-            -- COALESCE(transfer_type, 0) transfer_type,
-            -- COALESCE(ref_index, 0) ref_index,
-            -- COALESCE(block_number, 0) block_number,
-            -- COALESCE(txn_ts, 0) txn_ts,
-            -- COALESCE(contract_address, "") contract_address,
-            -- COALESCE(from_address, "") from_address,
-            -- COALESCE(to_address, "") to_address,
-            -- COALESCE(token_id, "") token_id,
-            -- COALESCE(quantity, 0) quantity,
-            -- COALESCE(operator_address, "") operator_address
-            * EXCEPT(id)
-        FROM `internal-blockchain-indexed.ethereum.all_transfers`
-        WHERE txn_ts >= UNIX_SECONDS("{from_date}")
-          AND txn_ts < UNIX_SECONDS("{to_date}")
+    block_query_string = """
+        SELECT * 
+        FROM `internal-blockchain-indexed.ethereum.blocks`
+        WHERE block_time >= UNIX_SECONDS("{from_date}")
+          AND block_time < UNIX_SECONDS("{to_date}")
     """
 
     delete_query = """
-        DELETE FROM soc_data_eth_db.ethereum_transfer_tab 
+        DELETE FROM soc_data_eth_db.ethereum_block_tab 
         WHERE txn_ts >= UNIX_TIMESTAMP(%s)
           AND txn_ts < UNIX_TIMESTAMP(%s)
     """
 
-    balance_cloudsql_table_name = "balances"
-    all_transfers_cloudsql_table_name = "ethereum_transfer_tab"
+    block_cloudsql_table_name = "ethereum_block_tab"
 
     start = get_current_local_datetime(
         timezone=TIMEZONE,
@@ -135,19 +120,19 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
       start_date = from_date
 
       for _single_date in pd.date_range(from_date, to_date):
-        all_transfers_migration_profile = MigrationProfileModel(
-            query_string=all_transfers_query_string.format(
+        block_migration_profile = MigrationProfileModel(
+            query_string=block_query_string.format(
               from_date=start_date,
               to_date=(_single_date + timedelta(days=1)).strftime("%Y-%m-%d")
             ),
-            cloudsql_table_name=all_transfers_cloudsql_table_name,
+            cloudsql_table_name=block_cloudsql_table_name,
             delete_query=delete_query,
             from_date=start_date,
             to_date=_single_date.strftime("%Y-%m-%d"),
             mysql_connection=mysql_connection
         )
 
-        migration_list.append(all_transfers_migration_profile)
+        migration_list.append(block_migration_profile)
 
         end_date = (_single_date + timedelta(days=1)).strftime("%Y-%m-%d")
 
@@ -169,17 +154,6 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
         if _single_date == to_date:
           break
 
-      balance_migration_profile = MigrationProfileModel(
-          query_string=balance_query_string,
-          cloudsql_table_name=balance_cloudsql_table_name,
-          delete_query=delete_query,
-          from_date=from_date,
-          to_date=to_date,
-          mysql_connection=mysql_connection
-      )
-      if migrate_balance == 'true':
-        migration_list.append(balance_migration_profile)
-
       beam_profiles = convert_to_beam_profiles(migration_list)
 
     except Exception as e:
@@ -189,7 +163,6 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
               "detail": {
                   "from_date": from_date,
                   "to_date": to_date,
-                  "migrate_balance": migrate_balance,
                   "error_message": str(e)
               }
           }
@@ -201,7 +174,6 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
             "detail": {
                 "from_date": from_date,
                 "to_date": to_date,
-                "migrate_balance": migrate_balance,
             }
         },
         start_time=start
@@ -219,7 +191,6 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
             "detail": {
                 "from_date": from_date,
                 "to_date": to_date,
-                "migrate_balance": migrate_balance
             }
         },
         start_time=start
@@ -237,16 +208,3 @@ def execute_demo_pipeline(options, from_date, to_date, migrate_balance='false'):
           | 'Batching from BigQuery to Cloud SQL'
           >> beam.ParDo(LoadFromBigQueryToCloudSQL())
       )
-
-    
-    # log_task_success(
-    #     payload={
-    #         "message": f"Successful of the pipeline to ingest data from BigQuery to Cloud SQL with from_date {from_date} and to_date {to_date}",
-    #         "detail": {
-    #             "from_date": from_date,
-    #             "to_date": to_date,
-    #             "migrate_balance": migrate_balance,
-    #         }
-    #     },
-    #     start_time=start
-    # )
