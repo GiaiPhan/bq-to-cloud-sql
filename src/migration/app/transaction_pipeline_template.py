@@ -3,7 +3,7 @@ import argparse
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
 from app.config.application_config import COLOMBUS_LOCATION
-from migration.app.pipeline.transaction_pipeline import execute_demo_pipeline
+from app.pipeline.transaction_pipeline import execute_demo_pipeline
 
 
 if __name__ == "__main__":

@@ -216,31 +216,7 @@ class LoadFromBigQueryToCloudSQL(beam.DoFn):
                 from_time=from_time,
                 to_time=to_time
             )
-            # if cloudsql_table_name != "":
-            #     if cloudsql_table_name != "balances":
-            #         # delete_from_mysql(
-            #         #     delete_query=data.get("delete_query"),
-            #         #     from_time=data.get("from_time"),
-            #         #     to_time=data.get("to_time")
-            #         # )
-
-            #     else:
-            #         migration_balances = True
-            #         # try:
-            #         #     truncate_mysql_table(
-            #         #         cloudsql_table_name=cloudsql_table_name
-            #         #     )
-            #         # except Exception as e:
-            #         #     migration_balances = False
-                    
-            #         if migration_balances:
-            #             load_from_bigquery_to_cloudsql(
-            #                 mysql_connection=mysql_connection,
-            #                 query_string=query_string,
-            #                 cloudsql_table_name=cloudsql_table_name,
-            #                 from_time=from_time,
-            #                 to_time=to_time
-            #             )
+ 
         except Exception as e:
             log_task_failure(
                 payload={

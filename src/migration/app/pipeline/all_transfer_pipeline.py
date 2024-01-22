@@ -1,6 +1,6 @@
 import apache_beam as beam
 from app.model.migration_model import MigrationProfileModel
-from migration.app.pipeline.pipeline_task import LoadFromBigQueryToCloudSQL
+from app.pipeline.pipeline_task import LoadFromBigQueryToCloudSQL
 from app.config.application_config import PROJECT_ID
 
 import pandas as pd
