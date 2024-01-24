@@ -4,6 +4,15 @@ from airflow.utils.context import Context
 from utils.parse_time import get_run_time_params
 
 
+class GetCustomParam(BaseOperator):
+    def __init__(self, from_date: str,  to_date: str, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.from_date = from_date
+        self.to_date = to_date
+
+    def execute(self, context: Context) -> dict:
+        return "f"+context["params"]["from_date"].replace("-", "")[2:] + "-t" + context["params"]["to_date"].replace("-", "")[2:]
+
 class CloudAceBuildDataflowBodyOperator(BaseOperator):
 
     template_fields: Sequence[str] = (
@@ -17,7 +26,6 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
 
 
     def execute(self, context: Context) -> dict:
-        print(context["params"])
         ti = context["ti"]
         run_id = context.get("run_id")
         ds_nodash = context.get("ds_nodash")
@@ -59,16 +67,20 @@ class CloudAceBuildDataflowBodyOperator(BaseOperator):
                 "from_time": from_time,
                 "to_time": to_time
             }
+            job_name = f"{self.job_name_prefix}-{ds_nodash}-f{from_time.replace('-', '').replace(':','').replace(' ', '')[2:12]}-t{to_time.replace('-','').replace(':', '').replace(' ', '')[2:12]}"
+            print(job_name)
         elif context["dag"].tags[0] == "manual":
             parameters = {
                 "from_date": context["params"]["from_date"],
                 "to_date": context["params"]["to_date"]
             }
+            custom_params = ti.xcom_pull(task_ids='get_custom_param')
+            job_name = f"{self.job_name_prefix}-{ds_nodash}-{custom_params}"                                                                                                                 
         else:
             parameters = {}
 
         dataflow_body["launchParameter"] = {
-            "jobName": f"{self.job_name_prefix}-{ds_nodash}",
+            "jobName": job_name,
             "containerSpecGcsPath": self.dataflow_config['template_path'],
             "environment": {
                 # "tempLocation": self.dataflow_config['temp_location'],

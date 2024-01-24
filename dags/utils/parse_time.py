@@ -24,5 +24,5 @@ def get_run_time_params(interval):
     from_time = to_time - timedelta(hours=0, minutes=interval)
     from_time = pd.to_datetime(from_time).floor('5T').to_pydatetime().strftime(datetime_format)
     to_time = to_time.strftime(datetime_format)
-    
+
     return from_time, to_time
